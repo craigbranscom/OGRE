@@ -15,6 +15,4 @@ abstract contract OGREFactory {
      */
     event ContractProduced(address contractAddress, address producedBy);
 
-    constructor() {}
-
 }

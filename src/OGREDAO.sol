@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./interfaces/IOGREProposalFactory.sol";
 import "./interfaces/IOGREProposal.sol";
 import "./abstract/ActionHopper.sol";
-import "./abstract/ERC721Receivable.sol";
+// import "./abstract/ERC721Receivable.sol";
 
 import {Constants} from "./libraries/Constants.sol";
 import {Enums} from "./libraries/Enums.sol";
@@ -22,7 +22,7 @@ import {Structs} from "./libraries/Structs.sol";
  * @title Open Governance Referendum Engine DAO Contract
  * @author Craig Branscom
  */
-contract OGREDAO is AccessControl, ActionHopper, ERC721Receivable {
+contract OGREDAO is AccessControl, ActionHopper {
 
     address public immutable proposalFactoryAddress;
     address public immutable nftAddress; //ERC721 contract tracking member voting rights

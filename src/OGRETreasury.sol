@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
@@ -22,8 +22,8 @@ contract OGRETreasury is Ownable, Pausable {
     function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data) external returns (bytes4) {
         // require(_incomingOrderItem.contractAddress != address(0x0), "not expecting incoming order item");
         // require(_incomingOrderItem.itemType == ItemType.ERC721, "wrong item type sent");
-        // require(IERC721(from).ownerOf(tokenId) == address(this), "item not received");
-        // if (data.length > 0) {}
+        require(IERC721(from).ownerOf(tokenId) == address(this), "item not received");
+        if (data.length > 0) {}
         // IERC721(from).approve(msg.sender, tokenId);
         return IERC721Receiver.onERC721Received.selector;
     }

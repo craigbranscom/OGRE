@@ -1,22 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.20;
 
-import "../interfaces/IOGREProposalFactory.sol";
 import "../abstract/OGREFactory.sol";
 import "../OGREProposal.sol";
 
-contract OGREProposalFactory is IOGREProposalFactory, OGREFactory {
-
-    event ProposalFactoryCreated(address creator);
-
-    constructor() {
-        emit ProposalFactoryCreated(msg.sender);
-    }
+contract OGREProposalFactory is OGREFactory {
 
     function produceOGREProposal(string memory title, address daoAddress, address owner) public returns (address) {
         OGREProposal prop = new OGREProposal(title, daoAddress, owner);
         productionCount += 1;
-        emit ContractProduced(address(prop), address(this), owner);
+        emit ContractProduced(address(prop), owner);
         return address(prop);
     }
 }

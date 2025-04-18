@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IOGREDAO.sol";
+
 import {Enums} from "./libraries/Enums.sol";
 import {Structs} from "./libraries/Structs.sol";
 

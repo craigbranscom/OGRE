@@ -1,22 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.20;
 
-import "../interfaces/IOGRETreasuryFactory.sol";
 import "../abstract/OGREFactory.sol";
 import "../OGRETreasury.sol";
 
-contract OGRETreasuryFactory is IOGRETreasuryFactory, OGREFactory {
-
-    event TreasuryFactoryCreated(address creator);
-
-    constructor() {
-        emit TreasuryFactoryCreated(msg.sender);
-    }
+contract OGRETreasuryFactory is OGREFactory {
 
     function produceOGRETreasury(address daoAddress) public returns (address) {
         OGRETreasury treasury = new OGRETreasury(daoAddress);
         productionCount += 1;
-        emit ContractProduced(address(treasury), address(this), msg.sender);
+        emit ContractProduced(address(treasury), msg.sender);
         return address(treasury);
     }
 }

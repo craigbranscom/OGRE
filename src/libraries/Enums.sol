@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.20;
 
 library Enums {
 
@@ -35,10 +35,10 @@ library Enums {
      * OPEN: any nft holder can register to dao as a member
      * INVITE: only dao owner can invite new members
      */
-    // enum AccessType {
-    //     OPEN,
-    //     INVITE
-    // }
+    enum AccessType {
+        OPEN,
+        INVITE
+    }
 
     /**
      * ASK:

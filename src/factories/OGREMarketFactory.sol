@@ -1,22 +1,20 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.20;
 
-import "../interfaces/IOGREMarketFactory.sol";
 import "../abstract/OGREFactory.sol";
 import "../OGREMarket.sol";
 
-contract OGREMarketFactory is IOGREMarketFactory, OGREFactory {
+contract OGREMarketFactory is OGREFactory {
 
-    event MarketFactoryCreated(address creator);
-
-    constructor() {
-        emit MarketFactoryCreated(msg.sender);
-    }
-
-    function produceOGREMarket(address daoAddress, address admin, uint256 orderFee, address feeRecipient) public returns (address) {
+    function produceOGREMarket(
+        address daoAddress, 
+        address admin, 
+        uint256 orderFee, 
+        address feeRecipient
+    ) public returns (address) {
         OGREMarket mkt = new OGREMarket(daoAddress, admin, orderFee, feeRecipient);
         productionCount += 1;
-        emit ContractProduced(address(mkt), address(this), msg.sender);
+        emit ContractProduced(address(mkt), msg.sender);
         return address(mkt);
     }
 }
