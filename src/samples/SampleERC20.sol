@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 /**
  * @title Open Governance Referendum Engine ERC20 Contract
  */
-contract OGRE20 is Ownable, Pausable, ERC20 {
+contract SampleERC20 is Ownable, Pausable, ERC20 {
     
     constructor(string memory name_, string memory symbol_, address owner_) Ownable(owner_) ERC20(name_, symbol_) {}
 

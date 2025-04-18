@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 /**
  * @title Open Governance Referendum Engine NFT Contract
  */
-contract OGRE721 is Ownable, Pausable, ERC721 {
+contract SampleERC721 is Ownable, Pausable, ERC721 {
     
     constructor(string memory name_, string memory symbol_, address owner_) Ownable(owner_) ERC721(name_, symbol_) {}
 

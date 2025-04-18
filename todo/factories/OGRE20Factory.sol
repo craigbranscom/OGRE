@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import "../interfaces/IOGRE20Factory.sol";
 import "../abstract/OGREFactory.sol";
-import "../OGRE20.sol";
+import "../samples/SampleERC20.sol";
 
 contract OGRE20Factory is IOGRE20Factory, OGREFactory {
 

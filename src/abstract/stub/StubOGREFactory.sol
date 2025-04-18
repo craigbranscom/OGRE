@@ -11,7 +11,7 @@ contract StubOGREFactory is OGREFactory {
     constructor() {}
 
     function produceContract(address contractAddress, address producer) public {
-        emit ContractProduced(contractAddress, address(this), producer);
+        emit ContractProduced(contractAddress, producer);
     }
 
 }
