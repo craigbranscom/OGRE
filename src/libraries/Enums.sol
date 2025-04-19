@@ -26,18 +26,19 @@ library Enums {
      */
     enum MemberStatus {
         UNREGISTERED,
-        INVITED,
         REGISTERED,
         BANNED
     }
 
     /**
-     * OPEN: any nft holder can register to dao as a member
-     * INVITE: only dao owner can invite new members
+     * OPEN: any nft holder can self-register as a member
+     * INVITE: only dao members can register a member
+     * PRIVATE: only dao can register a member
      */
     enum AccessType {
         OPEN,
-        INVITE
+        INVITE,
+        PRIVATE
     }
 
     /**
@@ -47,6 +48,17 @@ library Enums {
     enum OrderType {
         ASK,
         BID
+    }
+
+    /**
+     * ERC20:
+     * ERC721:
+     * ERC1155:
+     */
+    enum ContractType {
+        ERC20,
+        ERC721,
+        ERC1155
     }
 
 }

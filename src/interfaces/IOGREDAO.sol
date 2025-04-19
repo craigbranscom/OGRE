@@ -17,7 +17,6 @@ interface IOGREDAO {
 
     function memberCount() external view returns (uint256);
     function getMemberStatus(uint256 tokenId) external view returns (uint256);
-    function isTokenOwner(uint256 tokenId, address member) external view returns (bool);
 
     function proposalCount() external view returns (uint256);
     function proposals(uint256) external view returns (address);
