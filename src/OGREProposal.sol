@@ -174,7 +174,7 @@ contract OGREProposal is Ownable {
         //TODO: check dao membership?
         // require(IOGREDAO(daoAddress).getMemberStatus() == 1, "member is not registered");
         require(status == Enums.ProposalStatus.PROPOSED, "invalid state");
-        require(IOGREDAO(daoAddress).isTokenOwner(tokenId, msg.sender), "caller not token owner");
+        // require(IOGREDAO(daoAddress).isTokenOwner(tokenId, msg.sender), "caller not token owner");
         require(vote <= 2, "vote must be either NO (0), YES (1), or ABSTAIN (2)");
         require(block.timestamp >= startTime, "must be after start time");
         require(block.timestamp <= endTime, "must be before end time");
