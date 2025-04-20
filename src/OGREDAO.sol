@@ -11,12 +11,6 @@ import {Constants} from "./libraries/Constants.sol";
 import {Enums} from "./libraries/Enums.sol";
 import {Structs} from "./libraries/Structs.sol";
 
-//TODO: index event params?
-//TODO: track proposal status?
-//TODO: forward tokens sent to dao to treasury?
-//TODO: draftAndLaunchProposal? scheduleProposal()?
-//TODO: add supportsInterface()? see ERC165
-
 /**
  * @title Open Governance Referendum Engine DAO Contract
  * @author Craig Branscom
@@ -36,7 +30,7 @@ contract OGREDAO is ActionHopper {
 
     uint256 public quorumThreshold; //minimum percentage of total members (nft tokens) participation needed to recognize a proposal (e.g. 555 = 5.55%)
     uint256 public supportThreshold; //minimum percentage of YES votes required to pass proposal (e.g. 6700 = 67.00%)
-    uint256 public minVotePeriod; //min length of time (in seconds) that a proposal must be open for a vote
+    uint256 public minVoteDuration; //min length of time (in seconds) that a proposal must be open for a vote
 
     uint256 public memberCount; //number of invited nfts from set that have been registered to the dao. this number is reduced if token is unregistered or banned
     mapping(uint256 => Enums.MemberStatus) private _members; //token id => member status
@@ -54,42 +48,29 @@ contract OGREDAO is ActionHopper {
      * @param nftAddress address of nft contract linked to dao
      * @param proposalFactoryAddress address of proposal factory used by dao
      */
-    event DAOCreated(address parentDAO, address nftAddress, address indexed proposalFactoryAddress);
-
-    /**
-     * @notice Logs a successful member invited
-     * @param daoAddress address of dao where member was invited
-     * @param nftAddress address of nft contract linked to dao
-     * @param tokenId id of nft token being registered to dao
-     */
-    event MemberInvited(address daoAddress, address indexed nftAddress, uint256 indexed tokenId);
+    event DAOCreated(address parentDAO, address nftAddress, address proposalFactoryAddress);
 
     /**
      * @notice Logs a successful member registration
-     * @param daoAddress address of dao where member was registered
-     * @param nftAddress address of nft contract linked to dao
      * @param tokenId id of nft token being registered to dao
      * @param memberAddress address registering token
      */
-    event MemberRegistered(address daoAddress, address indexed nftAddress, uint256 indexed tokenId, address indexed memberAddress);
+    event MemberRegistered(uint256 indexed tokenId, address indexed memberAddress);
 
     /**
      * @notice Logs a successful member unregistration
-     * @param daoAddress address of dao where member was unregistered
-     * @param nftAddress address of nft contract linked to dao
      * @param tokenId id of nft token being unregistered
      * @param memberAddress address unregistering token
      */
-    event MemberUnregistered(address daoAddress, address nftAddress, uint256 tokenId, address memberAddress);
+    event MemberUnregistered(uint256 indexed tokenId, address indexed memberAddress);
 
     /**
      * @notice Logs a proposal creation
-     * @param daoAddress address of dao
      * @param proposal address of proposal contract
      * @param proposalId unique proposal id assigned by dao
      * @param creator address of proposal creator
      */
-    event ProposalCreated(address daoAddress, address proposal, uint256 proposalId, address creator);
+    event ProposalCreated(address proposal, uint256 proposalId, address creator);
 
     /**
      * @notice Logs a successful proposal evaluation
@@ -107,13 +88,14 @@ contract OGREDAO is ActionHopper {
 
     //========== Errors ==========
 
-    error ZeroAddressNotAllowed();
+    error InvalidAddress(string variableName, address value);
+    error InvalidSender(address sender, address expected);
     error InvalidThreshold(uint256 threshold);
     error InvalidDelay();
     error TokenAlreadyRegistered();
     error TokenAlreadyUnregistered();
     error NotTokenOwner();
-    error InsufficientPayment();
+    error InsufficientPayment(uint256 provided, uint256 required);
     error NotProposal();
     error InvalidProposalState();
     error VotePeriodNotEnded();
@@ -122,6 +104,8 @@ contract OGREDAO is ActionHopper {
     //========== Constructor ==========
 
     /**
+     * @notice Creates a new OGREDAO
+     * @param parentDAO_ address of parent dao
      * @param nftAddress_ address of ERC721 contract representing membership
      * @param proposalFactoryAddress_ address of OGREProposalFactory contract
      * @param proposalCost_ required cost to draft a proposal (in wei)
@@ -129,13 +113,19 @@ contract OGREDAO is ActionHopper {
      */
     constructor(
         address parentDAO_,
-        address nftAddress_, 
-        address proposalFactoryAddress_, 
-        uint256 proposalCost_, 
+        address nftAddress_,
+        address proposalFactoryAddress_,
+        uint256 proposalCost_,
         uint256 delay_
     ) ActionHopper(delay_) {
-        if (nftAddress_ == address(0x0)) revert ZeroAddressNotAllowed();
+        // validate
+        if (parentDAO_ != address(0x0)) {
+            if (msg.sender != parentDAO_) revert InvalidSender(msg.sender, parentDAO_);
+        }
+        if (nftAddress_ == address(0x0)) revert InvalidAddress("nftAddress_", nftAddress_);
+        if (proposalFactoryAddress_ == address(0x0)) revert InvalidAddress("proposalFactoryAddress_", proposalFactoryAddress_);
 
+        // initialize
         parentDAO = parentDAO_;
         nftAddress = nftAddress_;
         proposalFactoryAddress = proposalFactoryAddress_;
@@ -169,11 +159,11 @@ contract OGREDAO is ActionHopper {
     }
 
     /**
-     * @dev Sets new min vote period for dao
-     * @param newMinVotePeriod min time in seconds
+     * @dev Sets new min vote duration for dao
+     * @param newMinVoteDuration min time in seconds
      */
-    function setMinVotePeriod(uint256 newMinVotePeriod) public {
-        minVotePeriod = newMinVotePeriod;
+    function setMinVoteDuration(uint256 newMinVoteDuration) public {
+        minVoteDuration = newMinVoteDuration;
     }
 
     /**
@@ -194,7 +184,7 @@ contract OGREDAO is ActionHopper {
         _members[tokenId] = Enums.MemberStatus.REGISTERED;
         memberCount += 1;
 
-        emit MemberRegistered(address(this), nftAddress, tokenId, msg.sender);
+        emit MemberRegistered(tokenId, msg.sender);
     }
 
     function unregisterMember(uint256 tokenId) public {
@@ -204,7 +194,7 @@ contract OGREDAO is ActionHopper {
         _members[tokenId] = Enums.MemberStatus.UNREGISTERED;
         memberCount -= 1;
 
-        emit MemberUnregistered(address(this), nftAddress, tokenId, msg.sender);
+        emit MemberUnregistered(tokenId, msg.sender);
     }
 
     function getMemberStatus(uint256 tokenId) public view returns (Enums.MemberStatus) {
@@ -225,7 +215,7 @@ contract OGREDAO is ActionHopper {
      * @dev Crafts a new proposal
      */
     function draftProposal(string memory proposalTitle) public payable returns (address) {
-        if (msg.value != proposalCost) revert InsufficientPayment();
+        if (msg.value != proposalCost) revert InsufficientPayment(msg.value, proposalCost);
 
         //call proposal factory to create new proposal
         address prop = IOGREProposalFactory(proposalFactoryAddress).produceOGREProposal(proposalTitle, address(this), msg.sender);
@@ -235,7 +225,7 @@ contract OGREDAO is ActionHopper {
         _proposals[prop] = proposalCount;
         proposals[proposalCount] = prop;
 
-        emit ProposalCreated(address(this), prop, proposalCount, msg.sender);
+        emit ProposalCreated(prop, proposalCount, msg.sender);
 
         return prop;
     }
