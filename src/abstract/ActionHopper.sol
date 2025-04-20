@@ -6,8 +6,12 @@ pragma solidity ^0.8.20;
  */
 abstract contract ActionHopper {
 
+    //========== State ==========
+
     uint256 public delay; //seconds that must elapse after action is loaded to be considered ready
     mapping(bytes32 => bool) public loadedActions;
+
+    //========== Events ==========
     
     /**
      * @dev logs an action being loaded into hopper
@@ -42,6 +46,8 @@ abstract contract ActionHopper {
      */
     event ActionExecuted(bytes32 trxHash, address target, uint256 value, string sig, bytes data, uint256 ready);
 
+    //========== Errors ==========
+
     /**
      * @dev throws if an action is not ready when attempting to execute
      * @param trxHash hash of target + value + sig + data + ready
@@ -62,6 +68,8 @@ abstract contract ActionHopper {
      * @param returnData data returned from call
      */
     error ActionExecutionFailed(bytes32 trxHash, bytes returnData);
+
+    //========== Constructor ==========
     
     constructor(uint256 delay_) {
         delay = delay_;

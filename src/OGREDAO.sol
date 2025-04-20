@@ -89,12 +89,12 @@ contract OGREDAO is ActionHopper {
     //========== Errors ==========
 
     error InvalidAddress(string variableName, address value);
-    error InvalidSender(address sender, address expected);
+    error InvalidSender(address sender, address required);
+    error InvalidMemberStatus();
     error InvalidThreshold(uint256 threshold);
     error InvalidDelay();
     error TokenAlreadyRegistered();
     error TokenAlreadyUnregistered();
-    error NotTokenOwner();
     error InsufficientPayment(uint256 provided, uint256 required);
     error NotProposal();
     error InvalidProposalState();
@@ -177,8 +177,12 @@ contract OGREDAO is ActionHopper {
 
     //========== Membership ==========
 
+    /**
+     * @dev Registers a member to the dao
+     * @param tokenId id of nft token being registered to dao
+     */
     function registerMember(uint256 tokenId) public {
-        if (IERC721(nftAddress).ownerOf(tokenId) != msg.sender) revert NotTokenOwner();
+        if (IERC721(nftAddress).ownerOf(tokenId) != msg.sender) revert InvalidSender(msg.sender, IERC721(nftAddress).ownerOf(tokenId));
         if (_members[tokenId] == Enums.MemberStatus.REGISTERED) revert TokenAlreadyRegistered();
 
         _members[tokenId] = Enums.MemberStatus.REGISTERED;
@@ -187,8 +191,12 @@ contract OGREDAO is ActionHopper {
         emit MemberRegistered(tokenId, msg.sender);
     }
 
+    /**
+     * @dev Unregisters a member from the dao
+     * @param tokenId id of nft token being unregistered from dao
+     */
     function unregisterMember(uint256 tokenId) public {
-        if (IERC721(nftAddress).ownerOf(tokenId) != msg.sender) revert NotTokenOwner();
+        if (IERC721(nftAddress).ownerOf(tokenId) != msg.sender) revert InvalidSender(msg.sender, IERC721(nftAddress).ownerOf(tokenId));
         if (_members[tokenId] == Enums.MemberStatus.UNREGISTERED) revert TokenAlreadyUnregistered();
 
         _members[tokenId] = Enums.MemberStatus.UNREGISTERED;
@@ -197,6 +205,11 @@ contract OGREDAO is ActionHopper {
         emit MemberUnregistered(tokenId, msg.sender);
     }
 
+    /**
+     * @dev Returns the status of a member
+     * @param tokenId id of nft token to check
+     * @return status status of member
+     */
     function getMemberStatus(uint256 tokenId) public view returns (Enums.MemberStatus) {
         return _members[tokenId];
     }
@@ -204,15 +217,7 @@ contract OGREDAO is ActionHopper {
     //========== Proposals ==========
 
     /**
-     * @dev Returns true if address is a proposal contract created by dao.
-     * @param proposal address to check
-     */
-    function isProposal(address proposal) public view returns (bool) {
-        return _proposals[proposal] > 0;
-    }
-
-    /**
-     * @dev Crafts a new proposal
+     * @dev Drafts a new proposal
      */
     function draftProposal(string memory proposalTitle) public payable returns (address) {
         if (msg.value != proposalCost) revert InsufficientPayment(msg.value, proposalCost);
@@ -304,6 +309,15 @@ contract OGREDAO is ActionHopper {
         }
 
         emit ProposalExecuted(proposal);
+    }
+
+    /**
+     * @dev Checks if address is a proposal contract created by dao.
+     * @param proposal address to check
+     * @return bool true if proposal is created by dao, false otherwise
+     */
+    function isProposal(address proposal) public view returns (bool) {
+        return _proposals[proposal] > 0;
     }
 
     //========== Receive ==========
