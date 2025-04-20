@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
+// import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./interfaces/IOGREProposalFactory.sol";
 import "./interfaces/IOGREProposal.sol";
 import "./abstract/ActionHopper.sol";
@@ -26,15 +26,13 @@ import {Structs} from "./libraries/Structs.sol";
  *         and unregistering members. It also manages the creation and evaluation of proposals.
  *         DAO members may create proposals that may include actions to be executed if the proposal is approved.
  */
-contract OGREDAO is AccessControl, ActionHopper {
+contract OGREDAO is ActionHopper {
 
     //========== State ==========
 
+    address public immutable parentDAO; //address of parent dao
     address public immutable proposalFactoryAddress; //address of proposal factory used by dao
     address public immutable nftAddress; //ERC721 contract tracking member voting rights
-
-    string public daoName; //name of the dao
-    string public daoMetadata; //metadata link for the dao
 
     uint256 public quorumThreshold; //minimum percentage of total members (nft tokens) participation needed to recognize a proposal (e.g. 555 = 5.55%)
     uint256 public supportThreshold; //minimum percentage of YES votes required to pass proposal (e.g. 6700 = 67.00%)
@@ -55,9 +53,8 @@ contract OGREDAO is AccessControl, ActionHopper {
      * @notice Logs a successful dao creation
      * @param nftAddress address of nft contract linked to dao
      * @param proposalFactoryAddress address of proposal factory used by dao
-     * @param admin address set with initial admin role
      */
-    event DAOCreated(address nftAddress, address indexed proposalFactoryAddress, address indexed admin);
+    event DAOCreated(address parentDAO, address nftAddress, address indexed proposalFactoryAddress);
 
     /**
      * @notice Logs a successful member invited
@@ -125,56 +122,29 @@ contract OGREDAO is AccessControl, ActionHopper {
     //========== Constructor ==========
 
     /**
-     * @param daoName_ name of the dao
-     * @param daoMetadata_ metadata link for the dao
-     * @param nftAddress_ address of ERC721 contract representing voting rights
+     * @param nftAddress_ address of ERC721 contract representing membership
      * @param proposalFactoryAddress_ address of OGREProposalFactory contract
      * @param proposalCost_ required cost to draft a proposal (in wei)
-     * @param admin_ address that will be assigned the DAO_ADMIN role
      * @param delay_ amount of time that must elapse before a loaded action can be executed (in seconds)
      */
     constructor(
-        string memory daoName_, 
-        string memory daoMetadata_, 
+        address parentDAO_,
         address nftAddress_, 
         address proposalFactoryAddress_, 
         uint256 proposalCost_, 
-        address admin_, 
         uint256 delay_
     ) ActionHopper(delay_) {
         if (nftAddress_ == address(0x0)) revert ZeroAddressNotAllowed();
-        if (admin_ == address(0x0)) revert ZeroAddressNotAllowed();
 
-        daoName = daoName_;
-        daoMetadata = daoMetadata_;
+        parentDAO = parentDAO_;
         nftAddress = nftAddress_;
         proposalFactoryAddress = proposalFactoryAddress_;
         proposalCost = proposalCost_;
 
-        _grantRole(Constants.DAO_ADMIN, admin_);
-        _grantRole(Constants.DAO_INVITE, admin_);
-        _setRoleAdmin(Constants.DAO_INVITE, Constants.DAO_ADMIN);
-
-        emit DAOCreated(nftAddress_, proposalFactoryAddress_, admin_);
+        emit DAOCreated(parentDAO_, nftAddress_, proposalFactoryAddress_);
     }
 
     //========== Configuration ==========
-
-    /**
-     * @dev Sets new dao name
-     * @param newDAOName new dao name
-     */
-    function setDAOName(string memory newDAOName) public {
-        daoName = newDAOName;
-    }
-
-    /**
-     * @dev Sets new dao metadata
-     * @param newDAOMetadata new dao metadata
-     */
-    function setDAOMetadata(string memory newDAOMetadata) public {
-        daoMetadata = newDAOMetadata;
-    }
 
     /**
      * @dev Sets new quorum threshold for dao. 

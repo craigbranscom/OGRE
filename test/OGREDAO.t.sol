@@ -50,12 +50,10 @@ contract OGREDAOTest is Test {
         proposalFactoryContract = new OGREProposalFactory();
         nftContract = new SampleERC721(name, symbol);
         daoContract = new OGREDAO(
-            daoName,
-            daoMetadata,
+            address(0x0),
             address(nftContract),
             address(proposalFactoryContract),
             proposalCost,
-            userA,
             delay
         );
 
@@ -65,15 +63,14 @@ contract OGREDAOTest is Test {
         }
     }
 
-    function test_DeployOGREDAO() public {
-        assertEq(daoContract.daoName(), daoName);
+    function test_DeployOGREDAO() public view {
         assertEq(daoContract.nftAddress(), address(nftContract));
         assertEq(daoContract.proposalFactoryAddress(), address(proposalFactoryContract));
         assertEq(daoContract.delay(), delay);
         
-        assertTrue(daoContract.hasRole(daoAdminRole, userA));
-        assertFalse(daoContract.hasRole(daoAdminRole, userB));
-        assertEq(daoContract.getRoleAdmin(daoInviteRole), daoAdminRole);
+        // assertTrue(daoContract.hasRole(daoAdminRole, userA));
+        // assertFalse(daoContract.hasRole(daoAdminRole, userB));
+        // assertEq(daoContract.getRoleAdmin(daoInviteRole), daoAdminRole);
     }
 
     // function testSetNewDAOName() public {

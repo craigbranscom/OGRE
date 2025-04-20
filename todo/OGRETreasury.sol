@@ -19,14 +19,14 @@ contract OGRETreasury is Ownable, Pausable {
         daoAddress = daoAddress_;
     }
 
-    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data) external returns (bytes4) {
-        // require(_incomingOrderItem.contractAddress != address(0x0), "not expecting incoming order item");
-        // require(_incomingOrderItem.itemType == ItemType.ERC721, "wrong item type sent");
-        require(IERC721(from).ownerOf(tokenId) == address(this), "item not received");
-        if (data.length > 0) {}
-        // IERC721(from).approve(msg.sender, tokenId);
-        return IERC721Receiver.onERC721Received.selector;
-    }
+    // function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data) external returns (bytes4) {
+    //     // require(_incomingOrderItem.contractAddress != address(0x0), "not expecting incoming order item");
+    //     // require(_incomingOrderItem.itemType == ItemType.ERC721, "wrong item type sent");
+    //     require(IERC721(from).ownerOf(tokenId) == address(this), "item not received");
+    //     if (data.length > 0) {}
+    //     // IERC721(from).approve(msg.sender, tokenId);
+    //     return IERC721Receiver.onERC721Received.selector;
+    // }
 
     function sendERC721(address to, address erc721Contract, uint256 tokenId) public {
         // require(_erc721Balances[erc721Contract][tokenId], "erc721 token not owned");
