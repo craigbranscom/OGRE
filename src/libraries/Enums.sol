@@ -20,6 +20,17 @@ library Enums {
     }
 
     /**
+     * NO:
+     * YES:
+     * ABSTAIN:
+     */
+    enum VoteDirection {
+        NO,
+        YES,
+        ABSTAIN
+    }
+
+    /**
      * UNREGISTERED: member has not registered, or elected to unregister after previously being registered
      * REGISTERED: member is registered
      * BANNED: member has been banned and cannot be registered again

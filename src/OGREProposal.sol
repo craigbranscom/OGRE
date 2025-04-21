@@ -2,8 +2,8 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./interfaces/IOGREDAO.sol";
-
 import {Enums} from "./libraries/Enums.sol";
 import {Structs} from "./libraries/Structs.sol";
 
@@ -17,7 +17,6 @@ contract OGREProposal is Ownable {
 
     address public immutable daoAddress; //dao whose members are allowed to cast votes on proposal
 
-    // bool public flagged; //dao can flag proposals to indicate members should proceed with caution
     bool public revotable; //allows members to change their votes during voting period
     string public proposalMetadata; //metadata link to information about proposal
     
@@ -44,7 +43,7 @@ contract OGREProposal is Ownable {
      * @param tokenId id of nft token granting vote
      * @param vote direction of vote (0 = NO, 1 = YES, 2 = ABSTAIN)
      */
-    event VoteCast(address voter, uint256 tokenId, uint8 vote);
+    event VoteCast(address voter, uint256 tokenId, Enums.VoteDirection vote);
 
     /**
      * @notice Logs a successful evaluation of proposal results.
@@ -57,7 +56,10 @@ contract OGREProposal is Ownable {
     //========== Errors ==========
 
     error InvalidAddress(string variableName, address value);
-    error InvalidStatus(Enums.ProposalStatus currentStatus, Enums.ProposalStatus requiredStatus);
+    error InvalidProposalStatus(Enums.ProposalStatus currentStatus, Enums.ProposalStatus requiredStatus);
+    error InvalidMemberStatus(Enums.MemberStatus currentStatus, Enums.MemberStatus requiredStatus);
+    error InvalidVoteDirection(Enums.VoteDirection vote);
+    error InvalidTokenOwner(uint256 tokenId, address owner);
     error StartTimeInPast();
     error EndTimeBeforeStartTime();
     error InvalidVoteDuration();
@@ -96,11 +98,6 @@ contract OGREProposal is Ownable {
         require(startTime == 0 || block.timestamp < startTime, "must be pre vote period");
         _;
     }
-
-    // modifier onlyPostVote {
-    //     require(block.timestamp > endTime, "must be post vote period");
-    //     _;
-    // }
 
     //========== Configuration ==========
 
@@ -170,6 +167,39 @@ contract OGREProposal is Ownable {
     //========== Voting ==========
 
     /**
+     * @dev casts a vote
+     * @param tokenId id of token casting votes
+     * @param vote number representing vote (0 = NO, 1 = YES, 2 = ABSTAIN)
+     */
+    function castVote(uint256 tokenId, Enums.VoteDirection vote) public {
+        //validate
+        if (status != Enums.ProposalStatus.PROPOSED) revert InvalidProposalStatus(status, Enums.ProposalStatus.PROPOSED);
+        if (IOGREDAO(daoAddress).getMemberStatus(tokenId) != Enums.MemberStatus.REGISTERED) {
+            revert InvalidMemberStatus(IOGREDAO(daoAddress).getMemberStatus(tokenId), Enums.MemberStatus.REGISTERED);
+        }
+        if (IERC721(daoAddress).ownerOf(tokenId) != msg.sender) revert InvalidTokenOwner(tokenId, msg.sender);
+        if (vote > Enums.VoteDirection(2)) revert InvalidVoteDirection(vote);
+        require(block.timestamp >= startTime, "must be after start time");
+        require(block.timestamp <= endTime, "must be before end time");
+
+        //existing vote not found
+        uint8 voteDirectionIdx = uint8(vote);
+        if (!votes[tokenId].voted) {
+            voteCount += 1;
+            voteTotals[voteDirectionIdx] += 1;
+        } else { //existing vote found
+            require(revotable, "proposal is not revotable");
+            voteTotals[uint8(votes[tokenId].direction)] -= 1; //undo previous vote
+            voteTotals[voteDirectionIdx] += 1; //apply new vote
+        }
+
+        votes[tokenId].direction = vote;
+        votes[tokenId].voted = true;
+
+        emit VoteCast(msg.sender, tokenId, vote);
+    }
+
+    /**
      * @dev Returns vote for token id.
      * @param tokenId id of token
      * @return Vote vote for token id
@@ -184,7 +214,7 @@ contract OGREProposal is Ownable {
      * @dev Cancels proposal.
      */
     function cancelProposal() public onlyOwner {
-        if (status != Enums.ProposalStatus.PROPOSED) revert InvalidStatus(status, Enums.ProposalStatus.PROPOSED);
+        if (status != Enums.ProposalStatus.PROPOSED) revert InvalidProposalStatus(status, Enums.ProposalStatus.PROPOSED);
         _updateStatus(Enums.ProposalStatus.CANCELLED);
     }
 
@@ -202,37 +232,6 @@ contract OGREProposal is Ownable {
     function _updateStatus(Enums.ProposalStatus newStatus) internal {
         emit StatusUpdated(status, newStatus);
         status = newStatus;
-    }
-
-    /**
-     * @dev casts a vote
-     * @param tokenId id of token casting votes
-     * @param vote number representing vote (0 = NO, 1 = YES, 2 = ABSTAIN)
-     */
-    function castVote(uint256 tokenId, uint8 vote) public {
-        //validate
-        //TODO: check dao membership?
-        // require(IOGREDAO(daoAddress).getMemberStatus() == 1, "member is not registered");
-        require(status == Enums.ProposalStatus.PROPOSED, "invalid state");
-        // require(IOGREDAO(daoAddress).isTokenOwner(tokenId, msg.sender), "caller not token owner");
-        require(vote <= 2, "vote must be either NO (0), YES (1), or ABSTAIN (2)");
-        require(block.timestamp >= startTime, "must be after start time");
-        require(block.timestamp <= endTime, "must be before end time");
-
-        //existing vote not found
-        if (!votes[tokenId].voted) {
-            voteCount += 1;
-            voteTotals[vote] += 1;
-        } else { //existing vote found
-            require(revotable, "proposal is not revotable");
-            voteTotals[votes[tokenId].direction] -= 1; //undo previous vote
-            voteTotals[vote] += 1; //apply new vote
-        }
-
-        votes[tokenId].direction = vote;
-        votes[tokenId].voted = true;
-
-        emit VoteCast(msg.sender, tokenId, vote);
     }
 
 }

@@ -14,7 +14,7 @@ library Structs {
     }
 
     struct Vote {
-        uint8 direction;
+        Enums.VoteDirection direction;
         bool voted;
     }
 
