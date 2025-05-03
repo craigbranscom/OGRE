@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
-import {Enums} from "./Enums.sol";
+import {Enums, OGREMarketEnums} from "./Enums.sol";
 
 library ActionHopperStructs {
     struct Action {
@@ -35,7 +35,7 @@ library OGREMarketStructs {
     }
 
     struct Order {
-        Enums.OrderType orderType;
+        OGREMarketEnums.OrderType orderType;
         address creator;
         address erc721Address;
         uint256 tokenId;
@@ -47,7 +47,7 @@ library OGREMarketStructs {
     }
 
     struct AdvancedOrder {
-        Enums.OrderType orderType;
+        OGREMarketEnums.OrderType orderType;
         address creator;
         address erc721Address;
         uint256 tokenId;

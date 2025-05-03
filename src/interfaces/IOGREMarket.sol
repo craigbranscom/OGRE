@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
-import {Enums} from "../libraries/Enums.sol";
+import {OGREMarketEnums} from "../libraries/Enums.sol";
 
 /**
  * @notice OGREMarket interface definition
  */
 interface IOGREMarket {
     function allowedContracts(address contractAddress) external view returns (bool);
-    function createOrder(Enums.OrderType orderType, address erc721Address, uint256 tokenId, address erc20Address, uint256 amount) external payable;
+    function createOrder(OGREMarketEnums.OrderType orderType, address erc721Address, uint256 tokenId, address erc20Address, uint256 amount) external payable;
     function orderExists(bytes32 orderHash) external view returns (bool);
     function calcOrderHash(address erc721Address, uint256 tokenId, address erc20Address, uint256 amount) external pure returns (bytes32);
     function calcItemHash(address erc721Address, uint256 tokenId) external pure returns (bytes32);

@@ -52,6 +52,9 @@ library Enums {
         PRIVATE
     }
 
+}
+
+library OGREMarketEnums {
     /**
      * ASK:
      * BID:
@@ -71,5 +74,4 @@ library Enums {
         ERC721,
         ERC1155
     }
-
 }

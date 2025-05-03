@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 import {Constants} from "./libraries/Constants.sol";
-import {Enums} from "./libraries/Enums.sol";
+import {Enums, OGREMarketEnums} from "./libraries/Enums.sol";
 import {OGREMarketStructs} from "./libraries/Structs.sol";
 
 //TODO: add order expiration
@@ -34,7 +34,7 @@ contract OGREMarket is AccessControl, ReentrancyGuard {
     event FeeRecipientUpdated(address newFeeRecipient);
     // event MinOrderDurationUpdated(uint256 newMinOrderDuration);
     event AllowlistUpdated(address contractAddress, bool allowed);
-    event OrderCreated(bytes32 indexed orderHash, Enums.OrderType orderType, address creator, address erc721Address, uint256 tokenId, address erc20Address, uint256 amount);
+    event OrderCreated(bytes32 indexed orderHash, OGREMarketEnums.OrderType orderType, address creator, address erc721Address, uint256 tokenId, address erc20Address, uint256 amount);
     event OrderCancelled(bytes32 indexed orderHash);
     // event OrderContracted(bytes32 indexed orderHash, uint256 fulfillmentId);
     event OrderFulfilled(bytes32 indexed orderHash);
@@ -75,8 +75,8 @@ contract OGREMarket is AccessControl, ReentrancyGuard {
 
     //========== Order Functions ==========
 
-    function createOrder(Enums.OrderType orderType, address erc721Address, uint256 tokenId, address erc20Address, uint256 amount) public payable nonReentrant {
-        require(orderType == Enums.OrderType.ASK || orderType == Enums.OrderType.BID, "invalid order type");
+    function createOrder(OGREMarketEnums.OrderType orderType, address erc721Address, uint256 tokenId, address erc20Address, uint256 amount) public payable nonReentrant {
+        require(orderType == OGREMarketEnums.OrderType.ASK || orderType == OGREMarketEnums.OrderType.BID, "invalid order type");
         require(allowedContracts[erc721Address], "erc721 contract not allowed");
         require(allowedContracts[erc20Address], "erc20 contract not allowed");
         require(amount > 0, "invalid amount");
@@ -88,7 +88,7 @@ contract OGREMarket is AccessControl, ReentrancyGuard {
         //asks indicate ownership of the erc721 item, bids indicate ownership of erc20 tokens
         IERC20 erc20Contract = IERC20(erc20Address);
         IERC721 erc721Contract = IERC721(erc721Address);
-        if (orderType == Enums.OrderType.ASK) {
+        if (orderType == OGREMarketEnums.OrderType.ASK) {
             require(listedItems[itemHash] == bytes32(0), "ask already exists for token id");
             require(erc721Contract.ownerOf(tokenId) == msg.sender, "not item owner");
             require(erc721Contract.getApproved(tokenId) == address(this) || erc721Contract.isApprovedForAll(msg.sender, address(this)), "not approved");
@@ -112,7 +112,7 @@ contract OGREMarket is AccessControl, ReentrancyGuard {
                 amount
             );
             orders[orderHash] = order;
-            if (orderType == Enums.OrderType.ASK) {
+            if (orderType == OGREMarketEnums.OrderType.ASK) {
                 listedItems[itemHash] = orderHash;
             }
             emit OrderCreated(orderHash, orderType, msg.sender, erc721Address, tokenId, erc20Address, amount);
@@ -122,7 +122,7 @@ contract OGREMarket is AccessControl, ReentrancyGuard {
 
             address erc721Holder;
             address erc20Holder;
-            if (orderType == Enums.OrderType.ASK) {
+            if (orderType == OGREMarketEnums.OrderType.ASK) {
                 erc721Holder = msg.sender;
                 erc20Holder = orders[orderHash].creator;
             } else {
@@ -146,7 +146,7 @@ contract OGREMarket is AccessControl, ReentrancyGuard {
     function cancelOrder(bytes32 orderHash) public {
         require(orders[orderHash].creator != address(0x0), "order not found");
         require(orders[orderHash].creator == msg.sender, "not order creator");
-        if (orders[orderHash].orderType == Enums.OrderType.ASK) {
+        if (orders[orderHash].orderType == OGREMarketEnums.OrderType.ASK) {
             bytes32 itemHash = calcItemHash(orders[orderHash].erc721Address, orders[orderHash].tokenId);
             delete listedItems[itemHash];
         }
