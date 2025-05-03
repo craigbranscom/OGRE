@@ -9,7 +9,7 @@ import "./abstract/ActionHopper.sol";
 
 import {Constants} from "./libraries/Constants.sol";
 import {Enums} from "./libraries/Enums.sol";
-import {Structs} from "./libraries/Structs.sol";
+import {Structs, OGREDAOStructs} from "./libraries/Structs.sol";
 
 /**
  * @title Open Governance Referendum Engine DAO Contract
@@ -24,16 +24,20 @@ contract OGREDAO is ActionHopper {
 
     //========== State ==========
 
-    address public immutable parentDAO; //address of parent dao
+    uint32 public constant PERCENTAGE_RESOLUTION = 10000; //10000 = 100.00%
+
+    address public immutable parentDAO; //address of parent dao. zero address indicates top level dao
     address public immutable proposalFactoryAddress; //address of proposal factory used by dao
-    address public immutable nftAddress; //ERC721 contract tracking member voting rights
+    address public immutable nftAddress; //ERC721 contract tracking member voting eligibility
 
     uint256 public quorumThreshold; //minimum percentage of total members (nft tokens) participation needed to recognize a proposal (e.g. 555 = 5.55%)
     uint256 public supportThreshold; //minimum percentage of YES votes required to pass proposal (e.g. 6700 = 67.00%)
     uint256 public minVoteDuration; //min length of time (in seconds) that a proposal must be open for a vote
 
-    uint256 public memberCount; //number of invited nfts from set that have been registered to the dao. this number is reduced if token is unregistered or banned
+    uint256 public memberCount; //number of invited nfts from set that have been registered to the dao
     mapping(uint256 => Enums.MemberStatus) private _members; //token id => member status
+    mapping(uint256 => bool) public memberAllowlist; //token id => isAllowed
+    bool public allowListEnabled; //if true, only members in the allowlist can register
 
     uint256 public proposalCount; //number of proposals that have been created by the dao
     mapping(uint256 => address) public proposals; //proposal[i] => proposal address
@@ -53,24 +57,17 @@ contract OGREDAO is ActionHopper {
     /**
      * @notice Logs a successful member registration
      * @param tokenId id of nft token being registered to dao
-     * @param memberAddress address registering token
+     * @param registeredBy address registering token
      */
-    event MemberRegistered(uint256 indexed tokenId, address indexed memberAddress);
-
-    /**
-     * @notice Logs a successful member unregistration
-     * @param tokenId id of nft token being unregistered
-     * @param memberAddress address unregistering token
-     */
-    event MemberUnregistered(uint256 indexed tokenId, address indexed memberAddress);
+    event MemberRegistered(uint256 indexed tokenId, address indexed registeredBy);
 
     /**
      * @notice Logs a proposal creation
      * @param proposal address of proposal contract
      * @param proposalId unique proposal id assigned by dao
-     * @param creator address of proposal creator
+     * @param createdBy proposal creator
      */
-    event ProposalCreated(address proposal, uint256 proposalId, address creator);
+    event ProposalCreated(address proposal, uint256 proposalId, address indexed createdBy);
 
     /**
      * @notice Logs a successful proposal evaluation
@@ -78,7 +75,7 @@ contract OGREDAO is ActionHopper {
      * @param supportPassed true if proposal passed dao support threshold
      * @param totalVotes final vote count on proposal
      */
-    event ProposalEvaluated(bool quorumPassed, bool supportPassed, uint256 totalVotes, uint256 quorumVotesThreshold, uint256 supportVotesThreshold);
+    event ProposalEvaluated(bool indexed quorumPassed, bool indexed supportPassed, uint256 totalVotes, uint256 quorumVotesThreshold, uint256 supportVotesThreshold);
 
     /**
      * @notice Logs successful execution of all proposal actions
@@ -105,33 +102,44 @@ contract OGREDAO is ActionHopper {
 
     /**
      * @notice Creates a new OGREDAO
-     * @param parentDAO_ address of parent dao
-     * @param nftAddress_ address of ERC721 contract representing membership
-     * @param proposalFactoryAddress_ address of OGREProposalFactory contract
-     * @param proposalCost_ required cost to draft a proposal (in wei)
-     * @param delay_ amount of time that must elapse before a loaded action can be executed (in seconds)
+     * @param _params_ OGREDAO constructor parameters
      */
     constructor(
-        address parentDAO_,
-        address nftAddress_,
-        address proposalFactoryAddress_,
-        uint256 proposalCost_,
-        uint256 delay_
-    ) ActionHopper(delay_) {
+        OGREDAOStructs.ConstructorParams memory _params_
+    ) ActionHopper(_params_.delay) {
         // validate
-        if (parentDAO_ != address(0x0)) {
-            if (msg.sender != parentDAO_) revert InvalidSender(msg.sender, parentDAO_);
+        if (_params_.parentDAO != address(0x0)) {
+            if (msg.sender != _params_.parentDAO) revert InvalidSender(msg.sender, _params_.parentDAO);
         }
-        if (nftAddress_ == address(0x0)) revert InvalidAddress("nftAddress_", nftAddress_);
-        if (proposalFactoryAddress_ == address(0x0)) revert InvalidAddress("proposalFactoryAddress_", proposalFactoryAddress_);
+        if (_params_.nftAddress == address(0x0)) revert InvalidAddress("nftAddress", _params_.nftAddress);
+        if (_params_.proposalFactoryAddress == address(0x0)) revert InvalidAddress("proposalFactoryAddress", _params_.proposalFactoryAddress);
 
         // initialize
-        parentDAO = parentDAO_;
-        nftAddress = nftAddress_;
-        proposalFactoryAddress = proposalFactoryAddress_;
-        proposalCost = proposalCost_;
+        parentDAO = _params_.parentDAO;
+        nftAddress = _params_.nftAddress;
+        proposalFactoryAddress = _params_.proposalFactoryAddress;
+        proposalCost = _params_.proposalCost;
+        proposalCostToken = _params_.proposalCostToken;
+        quorumThreshold = _params_.quorumThreshold;
+        supportThreshold = _params_.supportThreshold;
+        minVoteDuration = _params_.minVoteDuration;
 
-        emit DAOCreated(parentDAO_, nftAddress_, proposalFactoryAddress_);
+        //enable allowlist if provided
+        if (_params_.allowList.length > 0) {
+            allowListEnabled = true;
+            for (uint256 i = 0; i < _params_.allowList.length; i++) {
+                memberAllowlist[_params_.allowList[i]] = true;
+            }
+        }
+
+        //register initial members if provided
+        if (_params_.initialMembers.length > 0) {
+            for (uint256 i = 0; i < _params_.initialMembers.length; i++) {
+                _registerMember(_params_.initialMembers[i]);
+            }
+        }
+
+        emit DAOCreated(_params_.parentDAO, _params_.nftAddress, _params_.proposalFactoryAddress);
     }
 
     //========== Configuration ==========
@@ -141,7 +149,7 @@ contract OGREDAO is ActionHopper {
      * @param newQuorumThreshold quorum percentage (e.g. 555 = 5.55%)
      */
     function setQuorumThreshold(uint256 newQuorumThreshold) public {
-        if (newQuorumThreshold > 10000) revert InvalidThreshold(newQuorumThreshold);
+        if (newQuorumThreshold > PERCENTAGE_RESOLUTION) revert InvalidThreshold(newQuorumThreshold);
         if (newQuorumThreshold == 0) revert InvalidThreshold(newQuorumThreshold);
 
         quorumThreshold = newQuorumThreshold;
@@ -152,7 +160,7 @@ contract OGREDAO is ActionHopper {
      * @param newSupportThreshold support percentage (e.g. 555 = 5.55%)
      */
     function setSupportThreshold(uint256 newSupportThreshold) public {
-        if (newSupportThreshold > 10000) revert InvalidThreshold(newSupportThreshold);
+        if (newSupportThreshold > PERCENTAGE_RESOLUTION) revert InvalidThreshold(newSupportThreshold);
         if (newSupportThreshold == 0) revert InvalidThreshold(newSupportThreshold);
 
         supportThreshold = newSupportThreshold;
@@ -185,24 +193,7 @@ contract OGREDAO is ActionHopper {
         if (IERC721(nftAddress).ownerOf(tokenId) != msg.sender) revert InvalidSender(msg.sender, IERC721(nftAddress).ownerOf(tokenId));
         if (_members[tokenId] == Enums.MemberStatus.REGISTERED) revert TokenAlreadyRegistered();
 
-        _members[tokenId] = Enums.MemberStatus.REGISTERED;
-        memberCount += 1;
-
-        emit MemberRegistered(tokenId, msg.sender);
-    }
-
-    /**
-     * @dev Unregisters a member from the dao
-     * @param tokenId id of nft token being unregistered from dao
-     */
-    function unregisterMember(uint256 tokenId) public {
-        if (IERC721(nftAddress).ownerOf(tokenId) != msg.sender) revert InvalidSender(msg.sender, IERC721(nftAddress).ownerOf(tokenId));
-        if (_members[tokenId] == Enums.MemberStatus.UNREGISTERED) revert TokenAlreadyUnregistered();
-
-        _members[tokenId] = Enums.MemberStatus.UNREGISTERED;
-        memberCount -= 1;
-
-        emit MemberUnregistered(tokenId, msg.sender);
+        _registerMember(tokenId);
     }
 
     /**
@@ -253,8 +244,8 @@ contract OGREDAO is ActionHopper {
         uint256 abstainVotes = IOGREProposal(proposal).voteTotals(2);
         uint256 totalVotes = noVotes + yesVotes + abstainVotes;
 
-        uint256 quorumVotesThreshold = (memberCount * quorumThreshold) / 10000;
-        uint256 supportVotesThreshold = (memberCount * supportThreshold) / 10000;
+        uint256 quorumVotesThreshold = (memberCount * quorumThreshold) / PERCENTAGE_RESOLUTION;
+        uint256 supportVotesThreshold = (memberCount * supportThreshold) / PERCENTAGE_RESOLUTION;
 
         bool supportPassed = false;
         bool quorumPassed = false;
@@ -318,6 +309,15 @@ contract OGREDAO is ActionHopper {
      */
     function isProposal(address proposal) public view returns (bool) {
         return _proposals[proposal] > 0;
+    }
+
+    //========== Internal ==========
+
+    function _registerMember(uint256 tokenId) internal {
+        _members[tokenId] = Enums.MemberStatus.REGISTERED;
+        memberCount += 1;
+
+        emit MemberRegistered(tokenId, msg.sender);
     }
 
     //========== Receive ==========

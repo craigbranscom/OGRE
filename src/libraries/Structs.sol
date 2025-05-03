@@ -3,6 +3,30 @@ pragma solidity ^0.8.20;
 
 import {Enums} from "./Enums.sol";
 
+library OGREDAOStructs {
+    struct ConstructorParams {
+        address parentDAO;
+        address nftAddress;
+        address proposalFactoryAddress;
+        uint256 proposalCost;
+        address proposalCostToken;
+        uint256 quorumThreshold;
+        uint256 supportThreshold;
+        uint256 minVoteDuration;
+        uint256 delay;
+        uint256[] allowList;
+        uint256[] initialMembers;
+    }
+}
+
+library OGREMarketStructs {
+    struct ConstructorParams {
+        address daoAddress;
+    }
+
+    
+}
+
 library Structs {
 
     struct Action {

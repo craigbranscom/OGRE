@@ -63,6 +63,7 @@ contract OGREProposal is Ownable {
     error StartTimeInPast();
     error EndTimeBeforeStartTime();
     error InvalidVoteDuration();
+    error NotRevotable();
 
     //========== Constructor ==========
 
@@ -188,7 +189,7 @@ contract OGREProposal is Ownable {
             voteCount += 1;
             voteTotals[voteDirectionIdx] += 1;
         } else { //existing vote found
-            require(revotable, "proposal is not revotable");
+            if (!revotable) revert NotRevotable();
             voteTotals[uint8(votes[tokenId].direction)] -= 1; //undo previous vote
             voteTotals[voteDirectionIdx] += 1; //apply new vote
         }

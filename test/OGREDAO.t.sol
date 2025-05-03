@@ -6,6 +6,7 @@ import "../src/OGREDAO.sol";
 import "../src/samples/SampleERC721.sol";
 import "../src/OGREProposal.sol";
 import "../src/factories/OGREProposalFactory.sol";
+import {OGREDAOStructs} from "../src/libraries/Structs.sol";
 
 contract OGREDAOTest is Test {
     // Signers
@@ -29,6 +30,8 @@ contract OGREDAOTest is Test {
     uint256 proposalCost = 0;
     bytes32 daoAdminRole = keccak256("DAO_ADMIN");
     bytes32 daoInviteRole = keccak256("DAO_INVITE");
+    uint256[] allowList = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    uint256[] initialMembers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
     // OGRE Proposal
     string proposalTitle = "Test Proposal";
@@ -49,13 +52,19 @@ contract OGREDAOTest is Test {
         // Deploy contracts
         proposalFactoryContract = new OGREProposalFactory();
         nftContract = new SampleERC721(name, symbol);
-        daoContract = new OGREDAO(
-            address(0x0),
-            address(nftContract),
-            address(proposalFactoryContract),
-            proposalCost,
-            delay
-        );
+        daoContract = new OGREDAO(OGREDAOStructs.ConstructorParams({
+            parentDAO: address(0x0),
+            nftAddress: address(nftContract),
+            proposalFactoryAddress: address(proposalFactoryContract),
+            proposalCost: proposalCost,
+            proposalCostToken: address(0x0),
+            quorumThreshold: quorumThresh,
+            supportThreshold: supportThresh,
+            minVoteDuration: minVotePeriod,
+            delay: delay,
+            allowList: allowList,
+            initialMembers: initialMembers
+        }));
 
         // Mint NFTs to userA
         for (uint256 i = 0; i < 10; i++) {
