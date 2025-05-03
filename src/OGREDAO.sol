@@ -9,7 +9,7 @@ import "./abstract/ActionHopper.sol";
 
 import {Constants} from "./libraries/Constants.sol";
 import {Enums} from "./libraries/Enums.sol";
-import {Structs, OGREDAOStructs} from "./libraries/Structs.sol";
+import {OGREDAOStructs, ActionHopperStructs} from "./libraries/Structs.sol";
 
 /**
  * @title Open Governance Referendum Engine DAO Contract
@@ -93,7 +93,7 @@ contract OGREDAO is ActionHopper {
     error TokenAlreadyRegistered();
     error TokenAlreadyUnregistered();
     error InsufficientPayment(uint256 provided, uint256 required);
-    error NotProposal();
+    error ProposalNotRecognized();
     error InvalidProposalState();
     error VotePeriodNotEnded();
     error NoActionsToExecute();
@@ -175,6 +175,14 @@ contract OGREDAO is ActionHopper {
     }
 
     /**
+     * @dev Sets new proposal cost for dao
+     * @param newProposalCost new proposal cost in wei
+     */
+    function setProposalCost(uint256 newProposalCost) public {
+        proposalCost = newProposalCost;
+    }
+
+    /**
      * @dev Sets a new delay for action hopper
      * @param newDelay new delay value (in seconds)
      */
@@ -234,7 +242,7 @@ contract OGREDAO is ActionHopper {
      * @return bool true if proposal passed, false if failed
      */
     function evaluateProposal(address proposal) public returns (bool) {
-        if (!isProposal(proposal)) revert NotProposal();
+        if (!isProposal(proposal)) revert ProposalNotRecognized();
         if (IOGREProposal(proposal).status() != Enums.ProposalStatus.PROPOSED) revert InvalidProposalState();
         if (IOGREProposal(proposal).startTime() == 0) revert InvalidProposalState();
         if (block.timestamp <= IOGREProposal(proposal).endTime()) revert VotePeriodNotEnded();
@@ -267,7 +275,7 @@ contract OGREDAO is ActionHopper {
             //load actions into hopper
             uint256 actionCount = IOGREProposal(proposal).getActionCount();
             for (uint8 i = 0; i < actionCount; i++) {
-                Structs.Action memory act = IOGREProposal(proposal).getAction(i);
+                ActionHopperStructs.Action memory act = IOGREProposal(proposal).getAction(i);
                 act.ready = _loadAction(act.target, act.value, act.sig, act.data);
                 IOGREProposal(proposal).setActionReady(i, act.ready);
             }
@@ -285,7 +293,7 @@ contract OGREDAO is ActionHopper {
      * @dev Executes readied actions
      */
     function executeProposal(address proposal) public {
-        if (!isProposal(proposal)) revert NotProposal();
+        if (!isProposal(proposal)) revert ProposalNotRecognized();
         if (IOGREProposal(proposal).status() != Enums.ProposalStatus.PASSED) revert InvalidProposalState();
         if (IOGREProposal(proposal).getActionCount() == 0) revert NoActionsToExecute();
 
@@ -295,7 +303,7 @@ contract OGREDAO is ActionHopper {
         //execute readied actions
         uint256 actionCount = IOGREProposal(proposal).getActionCount();
         for (uint8 i = 0; i < actionCount; i++) {
-            Structs.Action memory act = IOGREProposal(proposal).getAction(i);
+            ActionHopperStructs.Action memory act = IOGREProposal(proposal).getAction(i);
             _executeAction(act.target, act.value, act.sig, act.data, act.ready);
         }
 

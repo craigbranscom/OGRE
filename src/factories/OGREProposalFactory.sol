@@ -3,11 +3,22 @@ pragma solidity ^0.8.20;
 
 import "../abstract/OGREFactory.sol";
 import "../OGREProposal.sol";
+import {OGREProposalStructs} from "../libraries/Structs.sol";
 
 contract OGREProposalFactory is OGREFactory {
 
-    function produceOGREProposal(string memory title, address daoAddress, address owner) public returns (address) {
-        OGREProposal prop = new OGREProposal(title, daoAddress, owner);
+    function produceOGREProposal(
+        string memory title, 
+        address daoAddress, 
+        address owner
+    ) public returns (address) {
+        OGREProposalStructs.ConstructorParams memory _params_ = OGREProposalStructs.ConstructorParams({
+            revotable: false,
+            daoAddress: daoAddress,
+            owner: owner,
+            proposalMetadata: title
+        });
+        OGREProposal prop = new OGREProposal(_params_);
         productionCount += 1;
         emit ContractProduced(address(prop), owner);
         return address(prop);

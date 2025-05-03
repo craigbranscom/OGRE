@@ -3,6 +3,16 @@ pragma solidity ^0.8.20;
 
 import {Enums} from "./Enums.sol";
 
+library ActionHopperStructs {
+    struct Action {
+        address target;
+        uint256 value;
+        string sig;
+        bytes data;
+        uint256 ready;
+    }
+}
+
 library OGREDAOStructs {
     struct ConstructorParams {
         address parentDAO;
@@ -22,24 +32,6 @@ library OGREDAOStructs {
 library OGREMarketStructs {
     struct ConstructorParams {
         address daoAddress;
-    }
-
-    
-}
-
-library Structs {
-
-    struct Action {
-        address target;
-        uint256 value;
-        string sig;
-        bytes data;
-        uint256 ready;
-    }
-
-    struct Vote {
-        Enums.VoteDirection direction;
-        bool voted;
     }
 
     struct Order {
@@ -89,5 +81,18 @@ library Structs {
     //     uint256 listingTokenId;
     //     bool allowPartialFill;
     // }
+}
 
+library OGREProposalStructs {
+    struct ConstructorParams {
+        bool revotable;
+        address daoAddress;
+        address owner;
+        string proposalMetadata;
+    }
+
+    struct Vote {
+        Enums.VoteDirection direction;
+        bool voted;
+    }
 }

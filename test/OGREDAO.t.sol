@@ -101,6 +101,12 @@ contract OGREDAOTest is Test {
         assertEq(daoContract.minVoteDuration(), newVoteDuration);
     }
 
+    function test_SetNewProposalCost() public {
+        uint256 newProposalCost = 0.0001 ether;
+        daoContract.setProposalCost(newProposalCost);
+        assertEq(daoContract.proposalCost(), newProposalCost);
+    }
+
     function test_SetNewActionDelay() public {
         uint256 newDelay = 20; // 20 seconds
         daoContract.setActionDelay(newDelay);
@@ -108,6 +114,22 @@ contract OGREDAOTest is Test {
     }
 
     // ========== Membership Tests ==========
+
+    function test_RevertIf_NotTokenOwner() public {
+        uint256 tokenId = 0;
+        vm.prank(user1);
+        vm.expectRevert(abi.encodeWithSelector(OGREDAO.InvalidSender.selector, user1, user0));
+        daoContract.registerMember(tokenId);
+    }
+
+    function test_RevertIf_MemberAlreadyRegistered() public {
+        uint256 tokenId = 0;
+        vm.prank(user0);
+        daoContract.registerMember(tokenId);
+        vm.prank(user0);
+        vm.expectRevert(abi.encodeWithSelector(OGREDAO.TokenAlreadyRegistered.selector));
+        daoContract.registerMember(tokenId);
+    }
 
     function test_RegisterNewMember() public {
         uint256 tokenId = 0;
@@ -122,14 +144,16 @@ contract OGREDAOTest is Test {
         assertEq(daoContract.memberCount(), preMemberCount + 1);
         assertEq(uint256(daoContract.getMemberStatus(tokenId)), 1);
     }
+    
+    // ========== Proposal Tests ==========
 
-    function test_RevertIf_MemberAlreadyRegistered() public {
-        uint256 tokenId = 0;
+    function test_RevertIf_InsufficientPayment() public {
+        uint256 newProposalCost = 0.0001 ether;
+        daoContract.setProposalCost(newProposalCost);
         vm.prank(user0);
-        daoContract.registerMember(tokenId);
-        vm.prank(user0);
-        vm.expectRevert(abi.encodeWithSelector(OGREDAO.TokenAlreadyRegistered.selector));
-        daoContract.registerMember(tokenId);
+        vm.expectRevert(abi.encodeWithSelector(OGREDAO.InsufficientPayment.selector, 0, newProposalCost));
+        //solhint-disable-next-line
+        daoContract.draftProposal(proposalTitle).call{value: 0}("");
     }
 
     // function testDraftAndSetupProposal() public {

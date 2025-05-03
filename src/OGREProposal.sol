@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./interfaces/IOGREDAO.sol";
 import {Enums} from "./libraries/Enums.sol";
-import {Structs} from "./libraries/Structs.sol";
+import {OGREProposalStructs, ActionHopperStructs} from "./libraries/Structs.sol";
 
 /**
  * @title Open Governance Referendum Engine Proposal Contract
@@ -25,8 +25,8 @@ contract OGREProposal is Ownable {
     uint256 public endTime; //end of vote period (unix timestamp)
     uint256 public voteCount; //number of tokens that have cast a vote
     uint256[3] public voteTotals; //[0, 0, 0] == no, yes, abstain
-    mapping(uint256 => Structs.Vote) public votes; //token id => vote struct
-    Structs.Action[] private actions; //actions to load (in order) if proposal passes
+    mapping(uint256 => OGREProposalStructs.Vote) public votes; //token id => vote struct
+    ActionHopperStructs.Action[] private actions; //actions to load (in order) if proposal passes
 
     //========== Events ==========
 
@@ -69,15 +69,16 @@ contract OGREProposal is Ownable {
 
     /**
      * @dev Creates proposal.
-     * @param proposalMetadata_ metadata link to information about proposal
-     * @param daoAddress_ address of dao 
-     * @param owner_ address of owner
+     * @param _params_ constructor params
      */
-    constructor(string memory proposalMetadata_, address daoAddress_, address owner_) Ownable(owner_) {
-        if (daoAddress_ == address(0x0)) revert InvalidAddress("daoAddress_", daoAddress_);
+    constructor(
+        OGREProposalStructs.ConstructorParams memory _params_
+    ) Ownable(_params_.owner) {
+        if (_params_.daoAddress == address(0x0)) revert InvalidAddress("daoAddress", _params_.daoAddress);
 
-        daoAddress = daoAddress_;
-        proposalMetadata = proposalMetadata_;
+        daoAddress = _params_.daoAddress;
+        revotable = _params_.revotable;
+        proposalMetadata = _params_.proposalMetadata;
 
         emit StatusUpdated(Enums.ProposalStatus.PROPOSED, Enums.ProposalStatus.PROPOSED);
     }
@@ -137,7 +138,7 @@ contract OGREProposal is Ownable {
      */
     function addAction(address target, uint256 value, string memory sig, bytes memory data) public onlyOwner onlyPreVote {
         //ready is set as zero when added, gets ready time set when loaded into action hopper
-        Structs.Action memory act = Structs.Action(target, value, sig, data, 0);
+        ActionHopperStructs.Action memory act = ActionHopperStructs.Action(target, value, sig, data, 0);
         actions.push(act);
     }
 
@@ -161,7 +162,7 @@ contract OGREProposal is Ownable {
      * @param index index of action
      * @return Action action at index
      */
-    function getAction(uint256 index) public view returns (Structs.Action memory) {
+    function getAction(uint256 index) public view returns (ActionHopperStructs.Action memory) {
         return actions[index];
     }
 
@@ -205,7 +206,7 @@ contract OGREProposal is Ownable {
      * @param tokenId id of token
      * @return Vote vote for token id
      */
-    function getVote(uint256 tokenId) public view returns (Structs.Vote memory) {
+    function getVote(uint256 tokenId) public view returns (OGREProposalStructs.Vote memory) {
         return votes[tokenId];
     }
 
@@ -219,6 +220,11 @@ contract OGREProposal is Ownable {
         _updateStatus(Enums.ProposalStatus.CANCELLED);
     }
 
+    /**
+     * @dev Sets action ready time.
+     * @param index index of action
+     * @param readyTime ready time of action
+     */
     function setActionReady(uint256 index, uint256 readyTime) external onlyDAO {
         // require(getActionCount() > 0, "no actions to update");
         // require(index <= getActionCount() - 1, "no action at index");
