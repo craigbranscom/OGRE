@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
-import {Enums} from "../libraries/Enums.sol";
+import {OGREDAOEnums} from "../libraries/Enums.sol";
 
 /**
  * @notice OGRE DAO interface definition
@@ -16,7 +16,7 @@ interface IOGREDAO {
     function minVoteDuration() external view returns (uint256);
 
     function memberCount() external view returns (uint256);
-    function getMemberStatus(uint256 tokenId) external view returns (Enums.MemberStatus);
+    function getMemberStatus(uint256 tokenId) external view returns (OGREDAOEnums.MemberStatus);
 
     function proposalCount() external view returns (uint256);
     function proposals(uint256) external view returns (address);

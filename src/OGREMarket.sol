@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 import {Constants} from "./libraries/Constants.sol";
-import {Enums, OGREMarketEnums} from "./libraries/Enums.sol";
+import {OGREMarketEnums} from "./libraries/Enums.sol";
 import {OGREMarketStructs} from "./libraries/Structs.sol";
 
 //TODO: add order expiration

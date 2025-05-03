@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
-import {Enums, OGREMarketEnums} from "./Enums.sol";
+import {OGREMarketEnums, OGREProposalEnums} from "./Enums.sol";
 
 library ActionHopperStructs {
     struct Action {
@@ -92,7 +92,7 @@ library OGREProposalStructs {
     }
 
     struct Vote {
-        Enums.VoteDirection direction;
+        OGREProposalEnums.VoteDirection direction;
         bool voted;
     }
 }

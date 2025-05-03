@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./interfaces/IOGREDAO.sol";
-import {Enums} from "./libraries/Enums.sol";
+import {OGREProposalEnums} from "./libraries/Enums.sol";
 import {OGREProposalStructs, ActionHopperStructs} from "./libraries/Structs.sol";
 
 /**
@@ -20,13 +20,14 @@ contract OGREProposal is Ownable {
     bool public revotable; //allows members to change their votes during voting period
     string public proposalMetadata; //metadata link to information about proposal
     
-    Enums.ProposalStatus public status; //proposed, cancelled, failed, passed, executed (cancelled, failed, and executed are terminal states)
+    OGREProposalEnums.ProposalStatus public status; //proposed, cancelled, failed, passed, executed (cancelled, failed, and executed are terminal states)
     uint256 public startTime; //start of vote period (unix timestamp)
     uint256 public endTime; //end of vote period (unix timestamp)
     uint256 public voteCount; //number of tokens that have cast a vote
     uint256[3] public voteTotals; //[0, 0, 0] == no, yes, abstain
     mapping(uint256 => OGREProposalStructs.Vote) public votes; //token id => vote struct
-    ActionHopperStructs.Action[] private actions; //actions to load (in order) if proposal passes
+    ActionHopperStructs.Action[] internal _passActions; //actions to load (in order) if proposal passes
+    ActionHopperStructs.Action[] internal _failActions; //actions to load (in order) if proposal fails
 
     //========== Events ==========
 
@@ -35,7 +36,7 @@ contract OGREProposal is Ownable {
      * @param previousStatus previous status of proposal
      * @param newStatus new status of proposal
      */
-    event StatusUpdated(Enums.ProposalStatus previousStatus, Enums.ProposalStatus newStatus);
+    event StatusUpdated(OGREProposalEnums.ProposalStatus previousStatus, OGREProposalEnums.ProposalStatus newStatus);
 
     /**
      * @notice Logs a vote.
@@ -43,7 +44,7 @@ contract OGREProposal is Ownable {
      * @param tokenId id of nft token granting vote
      * @param vote direction of vote (0 = NO, 1 = YES, 2 = ABSTAIN)
      */
-    event VoteCast(address voter, uint256 tokenId, Enums.VoteDirection vote);
+    event VoteCast(address voter, uint256 tokenId, OGREProposalEnums.VoteDirection vote);
 
     /**
      * @notice Logs a successful evaluation of proposal results.
@@ -56,9 +57,9 @@ contract OGREProposal is Ownable {
     //========== Errors ==========
 
     error InvalidAddress(string variableName, address value);
-    error InvalidProposalStatus(Enums.ProposalStatus currentStatus, Enums.ProposalStatus requiredStatus);
-    error InvalidMemberStatus(Enums.MemberStatus currentStatus, Enums.MemberStatus requiredStatus);
-    error InvalidVoteDirection(Enums.VoteDirection vote);
+    error InvalidProposalStatus(OGREProposalEnums.ProposalStatus currentStatus, OGREProposalEnums.ProposalStatus requiredStatus);
+    error InvalidMemberStatus(OGREDAOEnums.MemberStatus currentStatus, OGREDAOEnums.MemberStatus requiredStatus);
+    error InvalidVoteDirection(OGREProposalEnums.VoteDirection vote);
     error InvalidTokenOwner(uint256 tokenId, address owner);
     error StartTimeInPast();
     error EndTimeBeforeStartTime();
@@ -80,7 +81,7 @@ contract OGREProposal is Ownable {
         revotable = _params_.revotable;
         proposalMetadata = _params_.proposalMetadata;
 
-        emit StatusUpdated(Enums.ProposalStatus.PROPOSED, Enums.ProposalStatus.PROPOSED);
+        emit StatusUpdated(OGREProposalEnums.ProposalStatus.PROPOSED, OGREProposalEnums.ProposalStatus.PROPOSED);
     }
 
     //========== Modifiers ==========
@@ -136,25 +137,35 @@ contract OGREProposal is Ownable {
     /**
      * @dev Pushes a new action to the end of the actions queue
      */
-    function addAction(address target, uint256 value, string memory sig, bytes memory data) public onlyOwner onlyPreVote {
+    function addAction(bool passAction, address target, uint256 value, string memory sig, bytes memory data) public onlyOwner onlyPreVote {
         //ready is set as zero when added, gets ready time set when loaded into action hopper
         ActionHopperStructs.Action memory act = ActionHopperStructs.Action(target, value, sig, data, 0);
-        actions.push(act);
+
+        //add action to appropriate action queue
+        if (passAction) {
+            _passActions.push(act);
+        } else {
+            _failActions.push(act);
+        }
     }
 
     /**
      * @dev Removes action at end of action queue
      */
-    function removeAction() public onlyOwner onlyPreVote {
-        actions.pop();
+    function removeAction(bool passAction) public onlyOwner onlyPreVote {
+        if (passAction) {
+            _passActions.pop();
+        } else {
+            _failActions.pop();
+        }
     }
 
     /**
      * @dev Returns number of actions in proposal.
      * @return uint256 of actions in proposal
      */
-    function getActionCount() public view returns (uint256) {
-        return actions.length;
+    function getActionCount(bool passAction) public view returns (uint256) {
+        return passAction ? _passActions.length : _failActions.length;
     }
 
     /**
@@ -162,8 +173,8 @@ contract OGREProposal is Ownable {
      * @param index index of action
      * @return Action action at index
      */
-    function getAction(uint256 index) public view returns (ActionHopperStructs.Action memory) {
-        return actions[index];
+    function getActionByIndex(bool passAction, uint256 index) public view returns (ActionHopperStructs.Action memory) {
+        return passAction ? _passActions[index] : _failActions[index];
     }
 
     //========== Voting ==========
@@ -173,14 +184,14 @@ contract OGREProposal is Ownable {
      * @param tokenId id of token casting votes
      * @param vote number representing vote (0 = NO, 1 = YES, 2 = ABSTAIN)
      */
-    function castVote(uint256 tokenId, Enums.VoteDirection vote) public {
+    function castVote(uint256 tokenId, OGREProposalEnums.VoteDirection vote) public {
         //validate
-        if (status != Enums.ProposalStatus.PROPOSED) revert InvalidProposalStatus(status, Enums.ProposalStatus.PROPOSED);
-        if (IOGREDAO(daoAddress).getMemberStatus(tokenId) != Enums.MemberStatus.REGISTERED) {
-            revert InvalidMemberStatus(IOGREDAO(daoAddress).getMemberStatus(tokenId), Enums.MemberStatus.REGISTERED);
+        if (status != OGREProposalEnums.ProposalStatus.PROPOSED) revert InvalidProposalStatus(status, OGREProposalEnums.ProposalStatus.PROPOSED);
+        if (IOGREDAO(daoAddress).getMemberStatus(tokenId) != OGREDAOEnums.MemberStatus.REGISTERED) {
+            revert InvalidMemberStatus(IOGREDAO(daoAddress).getMemberStatus(tokenId), OGREDAOEnums.MemberStatus.REGISTERED);
         }
         if (IERC721(daoAddress).ownerOf(tokenId) != msg.sender) revert InvalidTokenOwner(tokenId, msg.sender);
-        if (vote > Enums.VoteDirection(2)) revert InvalidVoteDirection(vote);
+        if (vote > OGREProposalEnums.VoteDirection(2)) revert InvalidVoteDirection(vote);
         require(block.timestamp >= startTime, "must be after start time");
         require(block.timestamp <= endTime, "must be before end time");
 
@@ -216,8 +227,8 @@ contract OGREProposal is Ownable {
      * @dev Cancels proposal.
      */
     function cancelProposal() public onlyOwner {
-        if (status != Enums.ProposalStatus.PROPOSED) revert InvalidProposalStatus(status, Enums.ProposalStatus.PROPOSED);
-        _updateStatus(Enums.ProposalStatus.CANCELLED);
+        if (status != OGREProposalEnums.ProposalStatus.PROPOSED) revert InvalidProposalStatus(status, OGREProposalEnums.ProposalStatus.PROPOSED);
+        _updateStatus(OGREProposalEnums.ProposalStatus.CANCELLED);
     }
 
     /**
@@ -225,18 +236,22 @@ contract OGREProposal is Ownable {
      * @param index index of action
      * @param readyTime ready time of action
      */
-    function setActionReady(uint256 index, uint256 readyTime) external onlyDAO {
+    function setActionReady(bool passAction, uint256 index, uint256 readyTime) external onlyDAO {
         // require(getActionCount() > 0, "no actions to update");
         // require(index <= getActionCount() - 1, "no action at index");
         // require(readyTime > block.timestamp, "ready time must be in the future");
-        actions[index].ready = readyTime;
+        if (passAction) {
+            _passActions[index].ready = readyTime;
+        } else {
+            _failActions[index].ready = readyTime;
+        }
     }
 
     /**
      * @dev Updates proposal status.
      * @param newStatus new status of proposal
      */
-    function _updateStatus(Enums.ProposalStatus newStatus) internal {
+    function _updateStatus(OGREProposalEnums.ProposalStatus newStatus) internal {
         emit StatusUpdated(status, newStatus);
         status = newStatus;
     }

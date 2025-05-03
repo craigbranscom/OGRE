@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
-import {Enums} from "../libraries/Enums.sol";
+import {OGREProposalEnums} from "../libraries/Enums.sol";
 import {ActionHopperStructs} from "../libraries/Structs.sol";
 
 /**
@@ -9,7 +9,7 @@ import {ActionHopperStructs} from "../libraries/Structs.sol";
  */
 interface IOGREProposal {
     function proposalTitle() external view returns (string memory);
-    function status() external view returns (Enums.ProposalStatus);
+    function status() external view returns (OGREProposalEnums.ProposalStatus);
     function startTime() external view returns (uint256);
     function endTime() external view returns (uint256);
     function voteTotals(uint256 vote) external view returns (uint256);
