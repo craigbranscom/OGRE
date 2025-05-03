@@ -9,15 +9,15 @@ import "../src/factories/OGREProposalFactory.sol";
 import {OGREDAOStructs} from "../src/libraries/Structs.sol";
 
 contract OGREDAOTest is Test {
-    // Signers
-    address userA;
-    address userB;
-    address userC;
+    // Accounts
+    address user0;
+    address user1;
+    address user2;
 
     // ERC721
     string name = "Test NFTs";
     string symbol = "TEST";
-    uint256 maxSupply = 100;
+    uint256 maxSupply = 10;
     address owner;
 
     // OGRE DAO
@@ -27,11 +27,10 @@ contract OGREDAOTest is Test {
     uint256 quorumThresh = 5000; // 50%
     uint256 supportThresh = 6000; // 60%
     uint256 minVotePeriod = 300; // 5 mins
-    uint256 proposalCost = 0;
-    bytes32 daoAdminRole = keccak256("DAO_ADMIN");
-    bytes32 daoInviteRole = keccak256("DAO_INVITE");
-    uint256[] allowList = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-    uint256[] initialMembers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    uint256 proposalCost = 0; // free proposals
+    address proposalCostToken = address(0x0); //native token
+    uint256[] allowList;
+    uint256[] initialMembers;
 
     // OGRE Proposal
     string proposalTitle = "Test Proposal";
@@ -45,9 +44,9 @@ contract OGREDAOTest is Test {
 
     function setUp() public {
         // Get signers
-        userA = makeAddr("userA");
-        userB = makeAddr("userB");
-        userC = makeAddr("userC");
+        user0 = makeAddr("user0");
+        user1 = makeAddr("user1");
+        user2 = makeAddr("user2");
 
         // Deploy contracts
         proposalFactoryContract = new OGREProposalFactory();
@@ -66,75 +65,77 @@ contract OGREDAOTest is Test {
             initialMembers: initialMembers
         }));
 
-        // Mint NFTs to userA
+        // Mint NFTs to user0
         for (uint256 i = 0; i < 10; i++) {
-            nftContract.mint(userA, i);
+            nftContract.mint(user0, i);
         }
     }
+
+    // ========== Configuration Tests ==========
 
     function test_DeployOGREDAO() public view {
         assertEq(daoContract.nftAddress(), address(nftContract));
         assertEq(daoContract.proposalFactoryAddress(), address(proposalFactoryContract));
         assertEq(daoContract.delay(), delay);
         
-        // assertTrue(daoContract.hasRole(daoAdminRole, userA));
-        // assertFalse(daoContract.hasRole(daoAdminRole, userB));
+        // assertTrue(daoContract.hasRole(daoAdminRole, user0));
+        // assertFalse(daoContract.hasRole(daoAdminRole, user1));
         // assertEq(daoContract.getRoleAdmin(daoInviteRole), daoAdminRole);
     }
 
-    // function testSetNewDAOName() public {
-    //     string memory newName = "Test DAO 2.0";
-    //     daoContract.setDAOName(newName);
-    //     assertEq(daoContract.daoName(), newName);
-    // }
+    function test_SetNewQuorumThreshold() public {
+        uint256 newQuorumThresh = 7000; // 70%
+        daoContract.setQuorumThreshold(newQuorumThresh);
+        assertEq(daoContract.quorumThreshold(), newQuorumThresh);
+    }
 
-    // function testSetNewQuorumThreshold() public {
-    //     daoContract.setQuorumThreshold(quorumThresh);
-    //     assertEq(daoContract.quorumThreshold(), quorumThresh);
-    // }
+    function test_SetNewSupportThreshold() public {
+        uint256 newSupportThresh = 7000; // 70%
+        daoContract.setSupportThreshold(newSupportThresh);
+        assertEq(daoContract.supportThreshold(), newSupportThresh);
+    }
 
-    // function testSetNewSupportThreshold() public {
-    //     daoContract.setSupportThreshold(supportThresh);
-    //     assertEq(daoContract.supportThreshold(), supportThresh);
-    // }
+    function test_SetNewMinVoteDuration() public {
+        uint256 newVoteDuration = 400; // 4 mins
+        daoContract.setMinVoteDuration(newVoteDuration);
+        assertEq(daoContract.minVoteDuration(), newVoteDuration);
+    }
 
-    // function testSetNewMinVotePeriod() public {
-    //     daoContract.setMinVotePeriod(minVotePeriod);
-    //     assertEq(daoContract.minVotePeriod(), minVotePeriod);
-    // }
+    function test_SetNewActionDelay() public {
+        uint256 newDelay = 20; // 20 seconds
+        daoContract.setActionDelay(newDelay);
+        assertEq(daoContract.delay(), newDelay);
+    }
 
-    // function testCheckTokenOwnership() public {
-    //     uint256 tokenId = 0;
-    //     assertTrue(daoContract.isTokenOwner(tokenId, userA));
-    //     assertFalse(daoContract.isTokenOwner(tokenId, userB));
-    // }
+    // ========== Membership Tests ==========
 
-    // function testRegisterNewMember() public {
-    //     uint256 tokenId = 0;
-    //     uint256 memberCount = daoContract.memberCount();
-    //     uint256 memberStatus = uint256(daoContract.getMemberStatus(tokenId));
+    function test_RegisterNewMember() public {
+        uint256 tokenId = 0;
+        uint256 preMemberCount = daoContract.memberCount();
+        uint256 preMemberStatus = uint256(daoContract.getMemberStatus(tokenId));
 
-    //     assertEq(memberStatus, 0);
+        assertEq(preMemberStatus, 0);
 
-    //     vm.prank(userA);
-    //     daoContract.registerMember(tokenId);
+        vm.prank(user0);
+        daoContract.registerMember(tokenId);
 
-    //     assertEq(daoContract.memberCount(), memberCount + 1);
-    //     assertEq(uint256(daoContract.getMemberStatus(tokenId)), 2);
-    // }
+        assertEq(daoContract.memberCount(), preMemberCount + 1);
+        assertEq(uint256(daoContract.getMemberStatus(tokenId)), 1);
+    }
 
-    // function test_RevertIf_MemberAlreadyRegistered() public {
-    //     uint256 tokenId = 0;
-    //     vm.prank(userA);
-    //     daoContract.registerMember(tokenId);
-    //     vm.prank(userA);
-    //     daoContract.registerMember(tokenId);
-    // }
+    function test_RevertIf_MemberAlreadyRegistered() public {
+        uint256 tokenId = 0;
+        vm.prank(user0);
+        daoContract.registerMember(tokenId);
+        vm.prank(user0);
+        vm.expectRevert(abi.encodeWithSelector(OGREDAO.TokenAlreadyRegistered.selector));
+        daoContract.registerMember(tokenId);
+    }
 
     // function testDraftAndSetupProposal() public {
     //     uint256 propCount = daoContract.proposalCount();
 
-    //     vm.prank(userA);
+    //     vm.prank(user0);
     //     address propAddress = daoContract.draftProposal(proposalTitle);
 
     //     assertEq(daoContract.proposalCount(), propCount + 1);
@@ -142,7 +143,7 @@ contract OGREDAOTest is Test {
 
     //     // Register remaining members
     //     for (uint256 i = 1; i < 10; i++) {
-    //         vm.prank(userA);
+    //         vm.prank(user0);
     //         daoContract.registerMember(i);
     //     }
 
@@ -151,24 +152,24 @@ contract OGREDAOTest is Test {
 
     //     // Add action to proposalContract
     //     proposalContract = OGREProposal(propAddress);
-    //     address target = userA;
+    //     address target = user0;
     //     uint256 value = 1;
     //     string memory sig = "";
     //     bytes memory data = "";
 
-    //     vm.prank(userA);
+    //     vm.prank(user0);
     //     proposalContract.addAction(target, value, sig, data);
 
     //     // Set vote period
     //     startTime = block.timestamp + 1;
     //     endTime = startTime + 300;
 
-    //     vm.prank(userA);
+    //     vm.prank(user0);
     //     proposalContract.setVotingPeriod(startTime, endTime);
 
     //     // Cast votes on proposalContract
     //     for (uint256 i = 0; i < 10; i++) {
-    //         vm.prank(userA);
+    //         vm.prank(user0);
     //         proposalContract.castVote(i, 1); // yes vote
     //     }
 
@@ -177,28 +178,28 @@ contract OGREDAOTest is Test {
     // }
 
     // function testCheckProposalAddress() public {
-    //     vm.prank(userA);
+    //     vm.prank(user0);
     //     address propAddress = daoContract.draftProposal(proposalTitle);
     //     assertTrue(daoContract.isProposal(propAddress));
-    //     assertFalse(daoContract.isProposal(userA));
+    //     assertFalse(daoContract.isProposal(user0));
     // }
 
     // function testEvaluateProposalPassed() public {
-    //     vm.prank(userA);
+    //     vm.prank(user0);
     //     address propAddress = daoContract.draftProposal(proposalTitle);
     //     proposalContract = OGREProposal(propAddress);
 
     //     // Setup proposalContract (similar to testDraftAndSetupProposal)
     //     // ... (omitted for brevity, but should include the same setup)
 
-    //     vm.prank(userA);
+    //     vm.prank(user0);
     //     bool passed = daoContract.evaluateProposal(propAddress);
     //     assertTrue(passed);
     //     assertEq(uint256(proposalContract.status()), 3); // passed
     // }
 
     // function testExecuteProposal() public {
-    //     vm.prank(userA);
+    //     vm.prank(user0);
     //     address propAddress = daoContract.draftProposal(proposalTitle);
     //     proposalContract = OGREProposal(propAddress);
 
@@ -208,7 +209,7 @@ contract OGREDAOTest is Test {
     //     // Wait until ready time
     //     vm.warp(block.timestamp + delay + 1);
 
-    //     vm.prank(userA);
+    //     vm.prank(user0);
     //     daoContract.executeProposal(propAddress);
 
     //     assertEq(uint256(proposalContract.status()), 4); // executed
