@@ -88,7 +88,7 @@ library OGREProposalStructs {
         bool revotable;
         address daoAddress;
         address owner;
-        string proposalMetadata;
+        string proposalURI;
     }
 
     struct Vote {

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 // import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./interfaces/IOGREProposalFactory.sol";
 import "./interfaces/IOGREProposal.sol";
@@ -93,6 +94,7 @@ contract OGREDAO is ActionHopper {
     error TokenAlreadyRegistered();
     error TokenAlreadyUnregistered();
     error InsufficientPayment(uint256 provided, uint256 required);
+    error PaymentFailed(address token, uint256 provided, uint256 required);
     error ProposalNotRecognized();
     error InvalidProposalState();
     error VotePeriodNotEnded();
@@ -218,20 +220,17 @@ contract OGREDAO is ActionHopper {
     /**
      * @dev Drafts a new proposal
      */
-    function draftProposal(string memory proposalTitle) public payable returns (address) {
-        if (msg.value != proposalCost) revert InsufficientPayment(msg.value, proposalCost);
+    function draftProposal(string memory proposalURI) public payable returns (address) {
+        //validate
+        if (proposalCostToken == address(0x0)) {
+            if (msg.value != proposalCost) revert InsufficientPayment(msg.value, proposalCost);
+        } else {
+            /// @dev requires approval from token owner
+            bool success = IERC20(proposalCostToken).transferFrom(msg.sender, address(this), proposalCost);
+            if (!success) revert PaymentFailed(proposalCostToken, msg.value, proposalCost);
+        }
 
-        //call proposal factory to create new proposal
-        address prop = IOGREProposalFactory(proposalFactoryAddress).produceOGREProposal(proposalTitle, address(this), msg.sender);
-
-        //update state
-        proposalCount += 1;
-        _proposals[prop] = proposalCount;
-        proposals[proposalCount] = prop;
-
-        emit ProposalCreated(prop, proposalCount, msg.sender);
-
-        return prop;
+        return _draftProposal(proposalURI);
     }
 
     /**
@@ -326,6 +325,20 @@ contract OGREDAO is ActionHopper {
         memberCount += 1;
 
         emit MemberRegistered(tokenId, msg.sender);
+    }
+
+    function _draftProposal(string memory proposalURI) internal returns (address) {
+        //call proposal factory to create new proposal
+        address prop = IOGREProposalFactory(proposalFactoryAddress).produceOGREProposal(proposalURI, address(this), msg.sender);
+
+        //update state
+        proposalCount += 1;
+        _proposals[prop] = proposalCount;
+        proposals[proposalCount] = prop;
+
+        emit ProposalCreated(prop, proposalCount, msg.sender);
+
+        return prop;
     }
 
     //========== Receive ==========

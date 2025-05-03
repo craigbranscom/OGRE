@@ -18,7 +18,7 @@ contract OGREProposal is Ownable {
     address public immutable daoAddress; //dao whose members are allowed to cast votes on proposal
 
     bool public revotable; //allows members to change their votes during voting period
-    string public proposalMetadata; //metadata link to information about proposal
+    string public proposalURI; //metadata link to information about proposal
     
     OGREProposalEnums.ProposalStatus public status; //proposed, cancelled, failed, passed, executed (cancelled, failed, and executed are terminal states)
     uint256 public startTime; //start of vote period (unix timestamp)
@@ -79,7 +79,7 @@ contract OGREProposal is Ownable {
 
         daoAddress = _params_.daoAddress;
         revotable = _params_.revotable;
-        proposalMetadata = _params_.proposalMetadata;
+        proposalURI = _params_.proposalURI;
 
         emit StatusUpdated(OGREProposalEnums.ProposalStatus.PROPOSED, OGREProposalEnums.ProposalStatus.PROPOSED);
     }
@@ -102,14 +102,22 @@ contract OGREProposal is Ownable {
         _;
     }
 
+    /**
+     * @dev Reverts if before vote end period
+     */
+    modifier onlyPostVote {
+        require(block.timestamp > endTime, "must be post vote period");
+        _;
+    }
+
     //========== Configuration ==========
 
     /**
      * @dev Sets proposal metadata.
-     * @param newProposalMetadata new proposal metadata
+     * @param newProposalURI new proposal metadata uri
      */
-    function setProposalMetadata(string memory newProposalMetadata) public onlyOwner onlyPreVote {
-        proposalMetadata = newProposalMetadata;
+    function setProposalURI(string memory newProposalURI) public onlyOwner onlyPreVote {
+        proposalURI = newProposalURI;
     }
 
     /**
@@ -135,28 +143,25 @@ contract OGREProposal is Ownable {
     }
 
     /**
-     * @dev Pushes a new action to the end of the actions queue
+     * @dev Sets actions for proposal. Ready time can be zero when added, gets ready time set when loaded into action hopper
+     * @param passActionQueue true if actions are for pass queue, false if actions are for fail queue
+     * @param newActions actions to load (in order)
      */
-    function addAction(bool passAction, address target, uint256 value, string memory sig, bytes memory data) public onlyOwner onlyPreVote {
-        //ready is set as zero when added, gets ready time set when loaded into action hopper
-        ActionHopperStructs.Action memory act = ActionHopperStructs.Action(target, value, sig, data, 0);
-
-        //add action to appropriate action queue
-        if (passAction) {
-            _passActions.push(act);
-        } else {
-            _failActions.push(act);
-        }
-    }
-
-    /**
-     * @dev Removes action at end of action queue
-     */
-    function removeAction(bool passAction) public onlyOwner onlyPreVote {
-        if (passAction) {
-            _passActions.pop();
-        } else {
-            _failActions.pop();
+    function setActions(
+        bool passActionQueue,
+        ActionHopperStructs.Action[] calldata newActions
+    ) public onlyOwner onlyPreVote {
+        passActionQueue ? delete _passActions : delete _failActions;
+        if (newActions.length > 0) {
+            if (passActionQueue) {
+                for (uint256 i = 0; i < newActions.length; i++) {
+                    _passActions.push(newActions[i]);
+                }
+            } else {
+                for (uint256 i = 0; i < newActions.length; i++) {
+                    _failActions.push(newActions[i]);
+                }
+            }
         }
     }
 
@@ -164,8 +169,8 @@ contract OGREProposal is Ownable {
      * @dev Returns number of actions in proposal.
      * @return uint256 of actions in proposal
      */
-    function getActionCount(bool passAction) public view returns (uint256) {
-        return passAction ? _passActions.length : _failActions.length;
+    function getActionCount(bool passActionQueue) public view returns (uint256) {
+        return passActionQueue ? _passActions.length : _failActions.length;
     }
 
     /**
@@ -173,8 +178,8 @@ contract OGREProposal is Ownable {
      * @param index index of action
      * @return Action action at index
      */
-    function getActionByIndex(bool passAction, uint256 index) public view returns (ActionHopperStructs.Action memory) {
-        return passAction ? _passActions[index] : _failActions[index];
+    function getActionByIndex(bool passActionQueue, uint256 index) public view returns (ActionHopperStructs.Action memory) {
+        return passActionQueue ? _passActions[index] : _failActions[index];
     }
 
     //========== Voting ==========
@@ -227,7 +232,9 @@ contract OGREProposal is Ownable {
      * @dev Cancels proposal.
      */
     function cancelProposal() public onlyOwner {
-        if (status != OGREProposalEnums.ProposalStatus.PROPOSED) revert InvalidProposalStatus(status, OGREProposalEnums.ProposalStatus.PROPOSED);
+        if (status != OGREProposalEnums.ProposalStatus.PROPOSED) {
+            revert InvalidProposalStatus(status, OGREProposalEnums.ProposalStatus.PROPOSED);
+        }
         _updateStatus(OGREProposalEnums.ProposalStatus.CANCELLED);
     }
 
@@ -236,16 +243,18 @@ contract OGREProposal is Ownable {
      * @param index index of action
      * @param readyTime ready time of action
      */
-    function setActionReady(bool passAction, uint256 index, uint256 readyTime) external onlyDAO {
+    function setActionReady(bool passActionQueue, uint256 index, uint256 readyTime) external onlyDAO {
         // require(getActionCount() > 0, "no actions to update");
         // require(index <= getActionCount() - 1, "no action at index");
         // require(readyTime > block.timestamp, "ready time must be in the future");
-        if (passAction) {
+        if (passActionQueue) {
             _passActions[index].ready = readyTime;
         } else {
             _failActions[index].ready = readyTime;
         }
     }
+
+    //========== Internal ==========
 
     /**
      * @dev Updates proposal status.

@@ -8,7 +8,7 @@ import {OGREProposalStructs} from "../libraries/Structs.sol";
 contract OGREProposalFactory is OGREFactory {
 
     function produceOGREProposal(
-        string memory title, 
+        string memory proposalURI, 
         address daoAddress, 
         address owner
     ) public returns (address) {
@@ -16,7 +16,7 @@ contract OGREProposalFactory is OGREFactory {
             revotable: false,
             daoAddress: daoAddress,
             owner: owner,
-            proposalMetadata: title
+            proposalURI: proposalURI
         });
         OGREProposal prop = new OGREProposal(_params_);
         productionCount += 1;

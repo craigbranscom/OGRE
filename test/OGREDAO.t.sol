@@ -33,7 +33,7 @@ contract OGREDAOTest is Test {
     uint256[] initialMembers;
 
     // OGRE Proposal
-    string proposalTitle = "Test Proposal";
+    string proposalURI = "https://some-api-endpoint.com/";
     uint256 startTime;
     uint256 endTime;
 
@@ -153,7 +153,7 @@ contract OGREDAOTest is Test {
         vm.prank(user0);
         vm.expectRevert(abi.encodeWithSelector(OGREDAO.InsufficientPayment.selector, 0, newProposalCost));
         //solhint-disable-next-line
-        daoContract.draftProposal(proposalTitle).call{value: 0}("");
+        daoContract.draftProposal(proposalURI).call{value: 0}("");
     }
 
     // function testDraftAndSetupProposal() public {
