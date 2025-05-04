@@ -18,38 +18,49 @@ A smart contract suite for actionable governance within NFT communities.
 
 ## Prerequisites
 
-* npm
-* hardhat
+* Foundry (forge, cast, anvil)
+* Git
 
-`npm install`
+## Installation
+
+1. Install Foundry:
+```bash
+curl -L https://foundry.paradigm.xyz | bash
+foundryup
+```
+
+2. Clone the repository:
+```bash
+git clone https://github.com/craigbranscom/OGRE.git
+cd OGRE
+```
+
+3. Install dependencies:
+```bash
+forge install
+```
 
 ## Compile
 
-`npx hardhat compile`
+```bash
+forge build
+```
 
-## Build Go Bindings
+## Test
 
-solc --abi contracts/OGREDAO.sol
-solc --bin contracts/OGREDAO.sol
-abigen --bin=Store_sol_Store.bin --abi=Store_sol_Store.abi --pkg=dao --out=go/OGREDAO.go
-
-`docker run -v ~/GitHub/OGRE/:/sources ethereum/solc:0.8.17 -o sources/go --abi --bin /sources/contracts/OGREDAO.sol`
-
-`abigen --abi=./output/OGREDAO.abi --pkg=dao --out=go/OGREDAO.go`
-
-## Run Hardhat Tasks and Scripts
-
-`npx hardhat balance --account 0x...`
-
-`npx hardhat run --network localhost scripts/populate.js`
+```bash
+forge test
+```
 
 ## Deploy Contract Factories
 
 The `factories` folder contains simple factory contracts that deploy copies of their respective contracts. The `OGREDAOFactory` produces `OGREDAOs`, `OGRE721Factory` produces `OGRE721s`, etc.
 
-Run `npx hardhat run scripts/deployFactories.js` to deploy all factory contracts. This only needs to be done once per network, per factory version. New factory contracts should be deployed that produce updated versions of their respective contracts.
+To deploy a factory contract:
 
-For example, if the `OGREProposal` contract is updated from v1.0 to v1.1 then a new `OGREProposalFactory` contract should also be deployed that will produce the new v1.1 proposals. Of course older factories will always remain on chain, so DAOs can choose which factory will produce a given proposal.
+```bash
+forge create src/factories/OGREDAOFactory.sol:OGREDAOFactory --rpc-url <RPC_URL> --private-key <PRIVATE_KEY>
+```
 
 ## Create a DAO
 
@@ -70,8 +81,6 @@ Note that both `supportThreshold` and `quorumThreshold` checks must pass in orde
 DAO members can draft new proposals for the DAO, which can include an array of Actions that will be executed by the DAO contract if the proposal passes.
 
 ### Configure Proposal
-
-
 
 # Contracts Breakdown
 
