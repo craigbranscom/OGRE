@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import "../abstract/OGREFactory.sol";
 import "../OGREDAO.sol";
-import {OGREDAOStructs} from "../libraries/Structs.sol";
+import {IOGREDAO} from "../interfaces/IOGREDAO.sol";
 
 contract OGREDAOFactory is OGREFactory {
 
@@ -35,7 +35,7 @@ contract OGREDAOFactory is OGREFactory {
         uint256[] memory allowList,
         uint256[] memory initialMembers
     ) public returns (address) {
-        OGREDAOStructs.ConstructorParams memory params = OGREDAOStructs.ConstructorParams({
+        IOGREDAO.ConstructorParams memory params = IOGREDAO.ConstructorParams({
             parentDAO: parentDAO,
             nftAddress: nft,
             proposalFactoryAddress: proposalFactory,

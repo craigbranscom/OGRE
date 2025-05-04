@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 import {Constants} from "./libraries/Constants.sol";
 import {OGREMarketEnums} from "./libraries/Enums.sol";
-import {OGREMarketStructs} from "./libraries/Structs.sol";
+import {IOGREMarket} from "./interfaces/IOGREMarket.sol";
 
 //TODO: add order expiration
 //TODO: add order recipient
@@ -27,7 +27,7 @@ contract OGREMarket is AccessControl, ReentrancyGuard {
 
     mapping(address => bool) public allowedContracts;
     mapping(bytes32 => bytes32) public listedItems; //itemHash => orderHash
-    mapping(bytes32 => OGREMarketStructs.Order) public orders; //orderHash => Order
+    mapping(bytes32 => IOGREMarket.Order) public orders; //orderHash => Order
 
     event MarketCreated(address daoAddress);
     event OrderFeeUpdated(uint256 newOrderFee);
@@ -103,7 +103,7 @@ contract OGREMarket is AccessControl, ReentrancyGuard {
 
         //create new order
         if (orders[orderHash].creator == address(0x0)) {
-            OGREMarketStructs.Order memory order = OGREMarketStructs.Order(
+            IOGREMarket.Order memory order = IOGREMarket.Order(
                 orderType,
                 msg.sender,
                 erc721Address,

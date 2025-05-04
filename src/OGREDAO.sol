@@ -10,7 +10,7 @@ import "./abstract/ActionHopper.sol";
 
 import {Constants} from "./libraries/Constants.sol";
 import {OGREDAOEnums} from "./libraries/Enums.sol";
-import {OGREDAOStructs, ActionHopperStructs} from "./libraries/Structs.sol";
+import {IOGREDAO} from "./interfaces/IOGREDAO.sol";
 
 /**
  * @title Open Governance Referendum Engine DAO Contract
@@ -107,7 +107,7 @@ contract OGREDAO is ActionHopper {
      * @param _params_ OGREDAO constructor parameters
      */
     constructor(
-        OGREDAOStructs.ConstructorParams memory _params_
+        IOGREDAO.ConstructorParams memory _params_
     ) ActionHopper(_params_.delay) {
         // validate
         if (_params_.parentDAO != address(0x0)) {
@@ -274,7 +274,7 @@ contract OGREDAO is ActionHopper {
             //load actions into hopper
             uint256 actionCount = IOGREProposal(proposal).getActionCount();
             for (uint8 i = 0; i < actionCount; i++) {
-                ActionHopperStructs.Action memory act = IOGREProposal(proposal).getAction(i);
+                IActionHopper.Action memory act = IOGREProposal(proposal).getAction(i);
                 act.ready = _loadAction(act.target, act.value, act.sig, act.data);
                 IOGREProposal(proposal).setActionReady(i, act.ready);
             }
@@ -302,7 +302,7 @@ contract OGREDAO is ActionHopper {
         //execute readied actions
         uint256 actionCount = IOGREProposal(proposal).getActionCount();
         for (uint8 i = 0; i < actionCount; i++) {
-            ActionHopperStructs.Action memory act = IOGREProposal(proposal).getAction(i);
+            IActionHopper.Action memory act = IOGREProposal(proposal).getAction(i);
             _executeAction(act.target, act.value, act.sig, act.data, act.ready);
         }
 

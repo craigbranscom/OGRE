@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import "../abstract/OGREFactory.sol";
 import "../OGREProposal.sol";
-import {OGREProposalStructs} from "../libraries/Structs.sol";
+import {IOGREProposal} from "../interfaces/IOGREProposal.sol";
 
 contract OGREProposalFactory is OGREFactory {
 
@@ -12,7 +12,7 @@ contract OGREProposalFactory is OGREFactory {
         address daoAddress, 
         address owner
     ) public returns (address) {
-        OGREProposalStructs.ConstructorParams memory _params_ = OGREProposalStructs.ConstructorParams({
+        IOGREProposal.ConstructorParams memory _params_ = IOGREProposal.ConstructorParams({
             revotable: false,
             daoAddress: daoAddress,
             owner: owner,

@@ -7,6 +7,25 @@ import {OGREDAOEnums} from "../libraries/Enums.sol";
  * @notice OGRE DAO interface definition
  */
 interface IOGREDAO {
+
+    //========== Definitions ==========
+
+    struct ConstructorParams {
+        address parentDAO;
+        address nftAddress;
+        address proposalFactoryAddress;
+        uint256 proposalCost;
+        address proposalCostToken;
+        uint256 quorumThreshold;
+        uint256 supportThreshold;
+        uint256 minVoteDuration;
+        uint256 delay;
+        uint256[] allowList;
+        uint256[] initialMembers;
+    }
+
+    //========== Functions ==========
+
     function parentDAO() external view returns (address);
     function proposalFactoryAddress() external view returns (address);
     function nftAddress() external view returns (address);

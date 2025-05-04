@@ -4,8 +4,10 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./interfaces/IOGREDAO.sol";
-import {OGREProposalEnums} from "./libraries/Enums.sol";
-import {OGREProposalStructs, ActionHopperStructs} from "./libraries/Structs.sol";
+import {OGREDAOEnums, OGREProposalEnums} from "./libraries/Enums.sol";
+import {IActionHopper} from "./interfaces/IActionHopper.sol";
+import {IOGREProposal} from "./interfaces/IOGREProposal.sol";
+import {IOGREDAO} from "./interfaces/IOGREDAO.sol";
 
 /**
  * @title Open Governance Referendum Engine Proposal Contract
@@ -25,9 +27,9 @@ contract OGREProposal is Ownable {
     uint256 public endTime; //end of vote period (unix timestamp)
     uint256 public voteCount; //number of tokens that have cast a vote
     uint256[3] public voteTotals; //[0, 0, 0] == no, yes, abstain
-    mapping(uint256 => OGREProposalStructs.Vote) public votes; //token id => vote struct
-    ActionHopperStructs.Action[] internal _passActions; //actions to load (in order) if proposal passes
-    ActionHopperStructs.Action[] internal _failActions; //actions to load (in order) if proposal fails
+    mapping(uint256 => IOGREProposal.Vote) public votes; //token id => vote struct
+    IActionHopper.Action[] internal _passActions; //actions to load (in order) if proposal passes
+    IActionHopper.Action[] internal _failActions; //actions to load (in order) if proposal fails
 
     //========== Events ==========
 
@@ -73,7 +75,7 @@ contract OGREProposal is Ownable {
      * @param _params_ constructor params
      */
     constructor(
-        OGREProposalStructs.ConstructorParams memory _params_
+        IOGREProposal.ConstructorParams memory _params_
     ) Ownable(_params_.owner) {
         if (_params_.daoAddress == address(0x0)) revert InvalidAddress("daoAddress", _params_.daoAddress);
 
@@ -149,7 +151,7 @@ contract OGREProposal is Ownable {
      */
     function setActions(
         bool passActionQueue,
-        ActionHopperStructs.Action[] calldata newActions
+        IActionHopper.Action[] calldata newActions
     ) public onlyOwner onlyPreVote {
         passActionQueue ? delete _passActions : delete _failActions;
         if (newActions.length > 0) {
@@ -178,7 +180,7 @@ contract OGREProposal is Ownable {
      * @param index index of action
      * @return Action action at index
      */
-    function getActionByIndex(bool passActionQueue, uint256 index) public view returns (ActionHopperStructs.Action memory) {
+    function getActionByIndex(bool passActionQueue, uint256 index) public view returns (IActionHopper.Action memory) {
         return passActionQueue ? _passActions[index] : _failActions[index];
     }
 
@@ -195,7 +197,8 @@ contract OGREProposal is Ownable {
         if (IOGREDAO(daoAddress).getMemberStatus(tokenId) != OGREDAOEnums.MemberStatus.REGISTERED) {
             revert InvalidMemberStatus(IOGREDAO(daoAddress).getMemberStatus(tokenId), OGREDAOEnums.MemberStatus.REGISTERED);
         }
-        if (IERC721(daoAddress).ownerOf(tokenId) != msg.sender) revert InvalidTokenOwner(tokenId, msg.sender);
+        address nftAddress = IOGREDAO(daoAddress).nftAddress();
+        if (IERC721(nftAddress).ownerOf(tokenId) != msg.sender) revert InvalidTokenOwner(tokenId, msg.sender);
         if (vote > OGREProposalEnums.VoteDirection(2)) revert InvalidVoteDirection(vote);
         require(block.timestamp >= startTime, "must be after start time");
         require(block.timestamp <= endTime, "must be before end time");
@@ -222,7 +225,7 @@ contract OGREProposal is Ownable {
      * @param tokenId id of token
      * @return Vote vote for token id
      */
-    function getVote(uint256 tokenId) public view returns (OGREProposalStructs.Vote memory) {
+    function getVote(uint256 tokenId) public view returns (IOGREProposal.Vote memory) {
         return votes[tokenId];
     }
 

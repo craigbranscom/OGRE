@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
+import {IActionHopper} from "../interfaces/IActionHopper.sol";
+
 /**
  * @title Action Hopper Contract
  */
-abstract contract ActionHopper {
+abstract contract ActionHopper is IActionHopper {
 
     //========== State ==========
 

@@ -32,9 +32,8 @@ abstract contract ERC721Receivable is IERC721Receiver {
      * @param operator address of operator
      * @param from address of sender
      * @param tokenId id of token
-     * @param data data to send with the token
      */
-    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data) external virtual override returns (bytes4) {
+    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata) external virtual override returns (bytes4) {
         // require(allowedERC721Contracts[from], "contract is not allowed");
         // require(_erc721Balances[from][tokenId] == false, "erc721 token already owned");
         // _erc721Balances[from][tokenId] = true;
